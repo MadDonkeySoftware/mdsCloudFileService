@@ -1,0 +1,26 @@
+{
+  "containers": {
+    "XBMC": {
+      "path": "/mnt/XBMC",
+      "read": true,
+      "delete": false,
+      "writeNested": false,
+      "deleteNested": false,
+      "extensionWhitelist": [
+        ".srt"
+      ],
+      "extensionBlacklist": []
+    },
+    "temp": {
+        "path": "/home/malline/git-source/faasFileService/frito-temp",
+        "read": true,
+        "delete": false,
+        "writeNested": false,
+        "deleteNested": false,
+        "extensionWhitelist": [
+          ".srt"
+        ],
+        "extensionBlacklist": []
+    }
+  }
+}
