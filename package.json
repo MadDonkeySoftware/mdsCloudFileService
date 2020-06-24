@@ -1,0 +1,40 @@
+{
+  "name": "faasfileservice",
+  "version": "1.0.0",
+  "description": "A simple http based download/upload micro service",
+  "scripts": {
+    "server": "./bin/server",
+    "test": "NODE_ENV=test mocha",
+    "test-cov": "NODE_ENV=test nyc mocha",
+    "lint": "eslint 'src/**'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MadDonkeySoftware/mdsCloudFileService.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/MadDonkeySoftware/mdsCloudFileService/issues"
+  },
+  "homepage": "https://github.com/MadDonkeySoftware/mdsCloudFileService#readme",
+  "dependencies": {
+    "del": "^5.1.0",
+    "bunyan": "^1.8.12",
+    "express": "^4.17.1",
+    "express-fileupload": "^1.1.6",
+    "lodash": "^4.17.15"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "eslint": "^6.8.0",
+    "eslint-config-airbnb-base": "^14.1.0",
+    "eslint-plugin-import": "^2.20.2",
+    "mocha": "^7.1.1",
+    "nyc": "^15.0.1",
+    "proxyquire": "^2.1.3",
+    "sinon": "^9.0.2",
+    "sinon-chai": "^3.5.0",
+    "supertest": "^4.0.2"
+  }
+}
