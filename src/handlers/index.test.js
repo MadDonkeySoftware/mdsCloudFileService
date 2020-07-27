@@ -294,10 +294,10 @@ describe('src/handlers/index', () => {
       getEnvVarStub.withArgs('MDS_SPECIAL_PERMISSIONS').returns(undefined);
 
       downloadStub.withArgs(sinon.match.object, '/tmp/mds-test/test-container/file.txt', 'file.txt', sinon.match.func)
-        .callsFake((req, fp, fn, cb) => {
+        .callsFake((res, fp, fn, cb) => {
           cb(undefined);
-          req.res.status(200);
-          req.res.send('');
+          res.status(200);
+          res.send('');
         });
 
       // Act / Assert

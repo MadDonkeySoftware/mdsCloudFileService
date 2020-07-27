@@ -163,12 +163,15 @@ const downloadFile = (request, response) => {
   const fileName = _.nth(subParts, -1);
 
   return computeDiskPath(request.params.container, request.params.nestedPath, request.params)
-    .then((meta) => helpers.downloadFile(request, meta.path, fileName, (err) => {
+    .then((meta) => helpers.downloadFile(response, meta.path, fileName, (err) => {
       if (err) {
-        logger.warn(err);
+        logger.warn({ err }, 'Error downloading file');
         sendResponse(response, 500);
       }
-    }));
+    }))
+    .catch((err) => {
+      logger.warn({ err }, 'Error downloading file');
+    });
 };
 
 const listContainers = (request, response) => {

@@ -23,13 +23,13 @@ const deleteFileOrPath = (fileOrPath, options) => del(fileOrPath, options);
 
 /**
  * Provides a wrapper around request file download for testing
- * @param {*} request the request to act upon
+ * @param {*} response the response to act upon
  * @param {*} filePath the path to the file to download
  * @param {*} filename the file name that the user will be provided
  * @param {*} callback the callback to indicate completion or failure
  */
-const downloadFile = (request, filePath, filename, callback) => (
-  request.download(filePath, filename, callback));
+const downloadFile = (response, filePath, filename, callback) => (
+  response.download(filePath, filename, callback));
 
 module.exports = {
   getEnvVar,
