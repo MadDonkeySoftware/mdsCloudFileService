@@ -7,8 +7,9 @@ const src = require('..');
 const helpers = require('../helpers');
 const specialPermissions = require('./special-permissions');
 
-describe('src/handlers/index', () => {
+describe('src/handlers/tf-state', () => {
   let app;
+  const testLockContainer = 'orid:1::::1:fs:test-container';
 
   before(() => {
     app = src.buildApp();
@@ -18,6 +19,300 @@ describe('src/handlers/index', () => {
     sinon.restore();
   });
 
+  it('using unhandled http verb returns error', () => {
+    // Act / Assert
+    return supertest(app)
+      .patch(`/tf/${testLockContainer}`)
+      .expect(404);
+  });
+
+  describe('lock', () => {
+    it('when no lock present returns lock', () => {
+      // Arrange
+      const existsStub = sinon.stub(fs, 'exists');
+      const writeStub = sinon.stub(fs, 'writeFile');
+      const existsAnswer = false;
+      const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
+      const specialPermsStub = sinon.stub(specialPermissions, 'get');
+
+      specialPermsStub.resolves();
+      getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
+      existsStub.withArgs('/tmp/mds-test/test-container/terraform.lock').callsFake((path, opt, cb) => {
+        if (cb === undefined) opt(undefined, existsAnswer);
+        else cb(undefined, existsAnswer);
+      });
+      writeStub.withArgs('/tmp/mds-test/test-container/terraform.lock').callsFake((path, opt, cb) => {
+        if (cb === undefined) opt(undefined);
+        else cb(undefined);
+      });
+
+      // Act / Assert
+      return supertest(app)
+        .lock(`/tf/${testLockContainer}`)
+        .send({ a: 1 })
+        .expect('content-type', /application\/json/)
+        .expect(200)
+        .then((resp) => {
+          chai.expect(resp.text).to.eql('');
+          chai.expect(writeStub.callCount).to.eql(1);
+        });
+    });
+
+    it('when lock present returns failure', () => {
+      // Arrange
+      const existsStub = sinon.stub(fs, 'exists');
+      const writeStub = sinon.stub(fs, 'writeFile');
+      const existsAnswer = true;
+      const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
+      const specialPermsStub = sinon.stub(specialPermissions, 'get');
+
+      specialPermsStub.resolves();
+      getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
+      existsStub.withArgs('/tmp/mds-test/test-container/terraform.lock').callsFake((path, opt, cb) => {
+        if (cb === undefined) opt(undefined, existsAnswer);
+        else cb(undefined, existsAnswer);
+      });
+      writeStub.withArgs('/tmp/mds-test/test-container/terraform.lock').callsFake((path, opt, cb) => {
+        if (cb === undefined) opt(undefined);
+        else cb(undefined);
+      });
+
+      // Act / Assert
+      return supertest(app)
+        .lock(`/tf/${testLockContainer}`)
+        .send({ a: 1 })
+        .expect('content-type', /application\/json/)
+        .expect(423)
+        .then((resp) => {
+          chai.expect(resp.text).to.eql('');
+          chai.expect(writeStub.callCount).to.eql(0);
+        });
+    });
+  });
+
+  describe('unlock', () => {
+    it('when lock present removes lock', () => {
+      // Arrange
+      const existsStub = sinon.stub(fs, 'exists');
+      const unlinkStub = sinon.stub(fs, 'unlink');
+      const existsAnswer = true;
+      const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
+      const specialPermsStub = sinon.stub(specialPermissions, 'get');
+
+      specialPermsStub.resolves();
+      getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
+      existsStub.withArgs('/tmp/mds-test/test-container/terraform.lock').callsFake((path, opt, cb) => {
+        if (cb === undefined) opt(undefined, existsAnswer);
+        else cb(undefined, existsAnswer);
+      });
+      unlinkStub.withArgs('/tmp/mds-test/test-container/terraform.lock').callsFake((path, opt, cb) => {
+        if (cb === undefined) opt(undefined);
+        else cb(undefined);
+      });
+
+      // Act / Assert
+      return supertest(app)
+        .unlock(`/tf/${testLockContainer}`)
+        .expect('content-type', /application\/json/)
+        .expect(200)
+        .then((resp) => {
+          chai.expect(resp.text).to.eql('');
+          chai.expect(unlinkStub.callCount).to.eql(1);
+        });
+    });
+
+    it('when lock not present returns failure', () => {
+      // Arrange
+      const existsStub = sinon.stub(fs, 'exists');
+      const unlinkStub = sinon.stub(fs, 'unlink');
+      const existsAnswer = false;
+      const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
+      const specialPermsStub = sinon.stub(specialPermissions, 'get');
+
+      specialPermsStub.resolves();
+      getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
+      existsStub.withArgs('/tmp/mds-test/test-container/terraform.lock').callsFake((path, opt, cb) => {
+        if (cb === undefined) opt(undefined, existsAnswer);
+        else cb(undefined, existsAnswer);
+      });
+      unlinkStub.withArgs('/tmp/mds-test/test-container/terraform.lock').callsFake((path, opt, cb) => {
+        if (cb === undefined) opt(undefined);
+        else cb(undefined);
+      });
+
+      // Act / Assert
+      return supertest(app)
+        .unlock(`/tf/${testLockContainer}`)
+        .expect('content-type', /application\/json/)
+        .expect(410)
+        .then((resp) => {
+          chai.expect(resp.text).to.eql('');
+          chai.expect(unlinkStub.callCount).to.eql(0);
+        });
+    });
+  });
+
+  describe('get', () => {
+    it('when state exists returns state', () => {
+      // Arrange
+      const existsStub = sinon.stub(fs, 'exists');
+      const readFileStub = sinon.stub(fs, 'readFile');
+      const existsAnswer = true;
+      const stateBody = '{"a":1}';
+      const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
+      const specialPermsStub = sinon.stub(specialPermissions, 'get');
+
+      specialPermsStub.resolves();
+      getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
+      existsStub.withArgs('/tmp/mds-test/test-container/terraform.tfstate').callsFake((path, opt, cb) => {
+        if (cb === undefined) opt(undefined, existsAnswer);
+        else cb(undefined, existsAnswer);
+      });
+      readFileStub.withArgs('/tmp/mds-test/test-container/terraform.tfstate').callsFake((path, opt, cb) => {
+        if (cb === undefined) opt(undefined, stateBody);
+        else cb(undefined, stateBody);
+      });
+
+      // Act / Assert
+      return supertest(app)
+        .get(`/tf/${testLockContainer}`)
+        .expect('content-type', /application\/json/)
+        .expect(200)
+        .then((resp) => {
+          chai.expect(resp.text).to.eql(stateBody);
+        });
+    });
+
+    it('when state does not exists returns nothing', () => {
+      // Arrange
+      const existsStub = sinon.stub(fs, 'exists');
+      const existsAnswer = false;
+      const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
+      const specialPermsStub = sinon.stub(specialPermissions, 'get');
+
+      specialPermsStub.resolves();
+      getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
+      existsStub.withArgs('/tmp/mds-test/test-container/terraform.tfstate').callsFake((path, opt, cb) => {
+        if (cb === undefined) opt(undefined, existsAnswer);
+        else cb(undefined, existsAnswer);
+      });
+
+      // Act / Assert
+      return supertest(app)
+        .get(`/tf/${testLockContainer}`)
+        .expect('content-type', /application\/json/)
+        .expect(200)
+        .then((resp) => {
+          chai.expect(resp.text).to.eql('');
+        });
+    });
+  });
+
+  describe('post', () => {
+    it('writes or overwrites state', () => {
+      // Arrange
+      const writeFileStub = sinon.stub(fs, 'writeFile');
+      const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
+      const specialPermsStub = sinon.stub(specialPermissions, 'get');
+
+      specialPermsStub.resolves();
+      getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
+      writeFileStub.withArgs('/tmp/mds-test/test-container/terraform.tfstate').callsFake((path, opt, cb) => {
+        if (cb === undefined) opt(undefined);
+        else cb(undefined);
+      });
+
+      // Act / Assert
+      return supertest(app)
+        .post(`/tf/${testLockContainer}`)
+        .expect('content-type', /application\/json/)
+        .expect(200)
+        .then((resp) => {
+          chai.expect(resp.text).to.eql('');
+          chai.expect(writeFileStub.callCount).to.eql(1);
+        });
+    });
+  });
+
+  describe('delete', () => {
+    it('when files present removes them', () => {
+      // Arrange
+      const existsStub = sinon.stub(fs, 'exists');
+      const unlinkStub = sinon.stub(fs, 'unlink');
+      const existsAnswer = true;
+      const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
+      const specialPermsStub = sinon.stub(specialPermissions, 'get');
+
+      specialPermsStub.resolves();
+      getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
+      existsStub.withArgs('/tmp/mds-test/test-container/terraform.lock').callsFake((path, opt, cb) => {
+        if (cb === undefined) opt(undefined, existsAnswer);
+        else cb(undefined, existsAnswer);
+      });
+      unlinkStub.withArgs('/tmp/mds-test/test-container/terraform.lock').callsFake((path, opt, cb) => {
+        if (cb === undefined) opt(undefined);
+        else cb(undefined);
+      });
+      existsStub.withArgs('/tmp/mds-test/test-container/terraform.tfstate').callsFake((path, opt, cb) => {
+        if (cb === undefined) opt(undefined, existsAnswer);
+        else cb(undefined, existsAnswer);
+      });
+      unlinkStub.withArgs('/tmp/mds-test/test-container/terraform.tfstate').callsFake((path, opt, cb) => {
+        if (cb === undefined) opt(undefined);
+        else cb(undefined);
+      });
+
+      // Act / Assert
+      return supertest(app)
+        .delete(`/tf/${testLockContainer}`)
+        .expect('content-type', /application\/json/)
+        .expect(200)
+        .then((resp) => {
+          chai.expect(resp.text).to.eql('');
+          chai.expect(unlinkStub.callCount).to.eql(2);
+        });
+    });
+
+    it('when files not present does nothing', () => {
+      // Arrange
+      const existsStub = sinon.stub(fs, 'exists');
+      const unlinkStub = sinon.stub(fs, 'unlink');
+      const existsAnswer = false;
+      const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
+      const specialPermsStub = sinon.stub(specialPermissions, 'get');
+
+      specialPermsStub.resolves();
+      getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
+      existsStub.withArgs('/tmp/mds-test/test-container/terraform.lock').callsFake((path, opt, cb) => {
+        if (cb === undefined) opt(undefined, existsAnswer);
+        else cb(undefined, existsAnswer);
+      });
+      unlinkStub.withArgs('/tmp/mds-test/test-container/terraform.lock').callsFake((path, opt, cb) => {
+        if (cb === undefined) opt(undefined);
+        else cb(undefined);
+      });
+      existsStub.withArgs('/tmp/mds-test/test-container/terraform.tfstate').callsFake((path, opt, cb) => {
+        if (cb === undefined) opt(undefined, existsAnswer);
+        else cb(undefined, existsAnswer);
+      });
+      unlinkStub.withArgs('/tmp/mds-test/test-container/terraform.tfstate').callsFake((path, opt, cb) => {
+        if (cb === undefined) opt(undefined);
+        else cb(undefined);
+      });
+
+      // Act / Assert
+      return supertest(app)
+        .delete(`/tf/${testLockContainer}`)
+        .expect('content-type', /application\/json/)
+        .expect(200)
+        .then((resp) => {
+          chai.expect(resp.text).to.eql('');
+          chai.expect(unlinkStub.callCount).to.eql(0);
+        });
+    });
+  });
+
+  /*
   describe('list containers', () => {
     it('when no special configuration present', () => {
       // Arrange
@@ -849,4 +1144,5 @@ describe('src/handlers/index', () => {
       });
     });
   });
+  */
 });
