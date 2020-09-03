@@ -3,6 +3,7 @@ const fileUpload = require('express-fileupload');
 
 const globals = require('./globals');
 const handlers = require('./handlers');
+const tfState = require('./handlers/tf-state');
 const appShutdown = require('./handlers/app_shutdown');
 
 const buildApp = () => {
@@ -25,7 +26,8 @@ const buildApp = () => {
       res.send('{"msg":"Hello World!"}');
     });
 
-    expressApp.use('/', handlers);
+    expressApp.use('/', tfState);
+    expressApp.use('/v1/', handlers);
   };
 
   const fileUploadOptions = {

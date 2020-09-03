@@ -3,10 +3,18 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const util = require('util');
+const orid = require('@maddonkeysoftware/orid-node');
 
 const globals = require('../globals');
 const helpers = require('../helpers');
 const specialPermissions = require('./special-permissions');
+const {
+  recombineUrlParts,
+  computeDiskPath,
+  getRequestOrid,
+  parseForTruthy,
+  sendResponse,
+} = require('./common');
 
 const logger = globals.getLogger();
 const router = express.Router();
@@ -15,84 +23,35 @@ const ignoreDirectories = [
   '@eaDir',
 ];
 
-const recombineUrlParts = (params, key) => {
-  const limit = 99;
-  let value = params[key];
-  let i = 0;
-
-  while (params[i] && i <= limit) {
-    value += params[i];
-    i += 1;
-  }
-
-  return value;
-};
-
-const parseForTruthy = (value) => {
-  if (typeof value === 'boolean') return value;
-  return value.toString().toLowerCase() === 'true';
-};
-
-const computeDiskPath = (container, nestedPath, requestParams) => specialPermissions.get()
-  .then((special) => {
-    if (special
-        && special.containers
-        && Object.keys(special.containers).indexOf(container) > -1) {
-      const meta = special.containers[container];
-      const parts = [
-        meta.path,
-      ];
-
-      if (nestedPath) {
-        parts.push(recombineUrlParts(requestParams, 'nestedPath'));
-      }
-
-      return {
-        path: path.join(...parts),
-        read: parseForTruthy(meta.read),
-        delete: parseForTruthy(meta.delete),
-        writeNested: parseForTruthy(meta.writeNested),
-        deleteNested: parseForTruthy(meta.deleteNested),
-        extensionWhitelist: meta.extensionWhitelist,
-        extensionBlacklist: meta.extensionBlacklist,
-      };
-    }
-
-    const parts = [
-      helpers.getEnvVar('MDS_UPLOAD_FOLDER'),
-      container,
-    ];
-
-    if (nestedPath) {
-      parts.push(recombineUrlParts(requestParams, 'nestedPath'));
-    }
-
-    return {
-      path: path.join(...parts),
-      read: true,
-      delete: true,
-      writeNested: true,
-      deleteNested: true,
-      extensionWhitelist: [],
-      extensionBlacklist: [],
-    };
-  });
-
-const sendResponse = (response, status, body) => {
-  response.status(status || 200);
-  response.send(body);
-  return Promise.resolve();
+const oridBase = {
+  provider: process.env.MDS_FS_PROVIDER_KEY,
+  custom3: 1, // TODO: Implement account
+  service: 'fs',
 };
 
 const uploadFile = (request, response) => {
-  logger.debug(`Uploaded file: ${request.files.file.name}`);
+  const { params } = request;
 
-  return computeDiskPath(request.params.container, request.params.nestedPath, request.params)
+  const inputOrid = getRequestOrid(params);
+  const resourceId = inputOrid ? inputOrid.resourceId : params.container;
+
+  logger.debug({ fileName: request.files.file.name, inputOrid, container: params.container }, 'Uploaded file');
+
+  return computeDiskPath(resourceId, request.params.nestedPath, request.params)
     .then((meta) => helpers.saveRequestFile(
       request.files.file,
       path.join(meta.path, request.files.file.name),
     ))
-    .then(() => sendResponse(response))
+    .then(() => {
+      const body = {
+        orid: orid.v1.generate(_.merge({}, oridBase, {
+          resourceId,
+          resourceRider: _.filter([recombineUrlParts(request.params, 'nestedPath'), request.files.file.name]).join('/'),
+          useSlashSeparator: true,
+        })),
+      };
+      return sendResponse(response, 200, body);
+    })
     .catch((err) => {
       logger.warn(err);
       return sendResponse(response, 500);
@@ -103,12 +62,19 @@ const createContainer = (request, response) => {
   const exists = util.promisify(fs.exists);
   const mkdir = util.promisify(fs.mkdir);
 
+  const { params } = request;
+
+  const inputOrid = getRequestOrid(params);
+  const resourceId = inputOrid ? inputOrid.resourceId : params.container;
+
   const parts = [
     helpers.getEnvVar('MDS_UPLOAD_FOLDER'),
-    request.params.container,
+    resourceId,
   ];
 
-  if (request.params.nestedPath) {
+  if (inputOrid && inputOrid.resourceId && inputOrid.resourceRider) {
+    parts.push(inputOrid.resourceRider);
+  } else if (!inputOrid && request.params.nestedPath) {
     parts.push(recombineUrlParts(request.params, 'nestedPath'));
   }
 
@@ -118,8 +84,36 @@ const createContainer = (request, response) => {
         return sendResponse(response, 409);
       }
 
+      // TODO: Handle nested paths
       return mkdir(path.join(...parts), { recursive: true })
-        .then(() => sendResponse(response, 201));
+        .then(() => {
+          let body;
+          if (inputOrid) {
+            body = {
+              orid: orid.v1.generate(_.merge({}, oridBase, {
+                resourceRider: inputOrid.resourceRider,
+                resourceId: inputOrid.resourceId,
+                useSlashSeparator: true,
+              })),
+            };
+          } else if (request.params.nestedPath) {
+            body = {
+              orid: orid.v1.generate(_.merge({}, oridBase, {
+                resourceId,
+                resourceRider: _.filter([recombineUrlParts(request.params, 'nestedPath')]).join('/'),
+                useSlashSeparator: true,
+              })),
+            };
+          } else {
+            body = {
+              orid: orid.v1.generate(_.merge({}, oridBase, {
+                resourceId,
+                useSlashSeparator: true,
+              })),
+            };
+          }
+          return sendResponse(response, 201, body);
+        });
     })
     .catch((err) => {
       logger.warn(err);
@@ -130,7 +124,25 @@ const createContainer = (request, response) => {
 const deleteContainer = (request, response) => {
   const exists = util.promisify(fs.exists);
 
-  return computeDiskPath(request.params.container, request.params.nestedPath, request.params)
+  const { params } = request;
+
+  const inputOrid = getRequestOrid(params);
+  const resourceId = inputOrid ? inputOrid.resourceId : params.container;
+
+  let getDiskPath;
+  if (inputOrid) {
+    if (inputOrid.resourceRider) {
+      getDiskPath = computeDiskPath(resourceId, inputOrid.resourceRider);
+    } else {
+      getDiskPath = computeDiskPath(resourceId);
+    }
+  } else if (request.params.nestedPath) {
+    getDiskPath = computeDiskPath(resourceId, request.params.nestedPath, request.params);
+  } else {
+    getDiskPath = computeDiskPath(resourceId);
+  }
+
+  return getDiskPath
     .then((meta) => exists(meta.path)
       .then((doesExist) => {
         if (!doesExist) {
@@ -158,20 +170,38 @@ const deleteContainer = (request, response) => {
 };
 
 const downloadFile = (request, response) => {
-  const recombinedPath = recombineUrlParts(request.params, 'nestedPath');
-  const subParts = recombinedPath.split('/');
-  const fileName = _.nth(subParts, -1);
+  const { params } = request;
 
-  return computeDiskPath(request.params.container, request.params.nestedPath, request.params)
-    .then((meta) => helpers.downloadFile(response, meta.path, fileName, (err) => {
-      if (err) {
-        logger.warn({ err }, 'Error downloading file');
-        sendResponse(response, 500);
-      }
-    }))
-    .catch((err) => {
+  const inputOrid = getRequestOrid(params);
+  const resourceId = inputOrid ? inputOrid.resourceId : params.container;
+
+  let getDiskPath;
+  if (inputOrid) {
+    if (inputOrid.resourceRider) {
+      getDiskPath = computeDiskPath(resourceId, inputOrid.resourceRider);
+    } else {
+      getDiskPath = computeDiskPath(resourceId);
+    }
+  } else if (request.params.nestedPath) {
+    getDiskPath = computeDiskPath(resourceId, request.params.nestedPath, request.params);
+  } else {
+    getDiskPath = computeDiskPath(resourceId);
+  }
+
+  const errHandler = (err) => {
+    if (err) {
       logger.warn({ err }, 'Error downloading file');
-    });
+      sendResponse(response, 500);
+    }
+  };
+
+  return getDiskPath
+    .then((meta) => {
+      const subParts = meta.path.split('/');
+      const fileName = _.nth(subParts, -1);
+      helpers.downloadFile(response, meta.path, fileName, errHandler);
+    })
+    .catch(errHandler);
 };
 
 const listContainers = (request, response) => {
@@ -199,6 +229,13 @@ const listContainers = (request, response) => {
       return Promise.all(children)
         .then((items) => items.filter((e) => e.stats.isDirectory()).map((e) => e.path))
         .then((results) => addSpecialContainers(results))
+        .then((results) => _.map(results, (name) => ({
+          name,
+          orid: orid.v1.generate(_.merge({}, oridBase, {
+            resourceId: name,
+            useSlashSeparator: true,
+          })),
+        })))
         .then((results) => sendResponse(response, 200, JSON.stringify(results)));
     })
     .catch((err) => {
@@ -208,10 +245,27 @@ const listContainers = (request, response) => {
 };
 
 const listContainerPath = (request, response) => {
+  const { params } = request;
   const readdir = util.promisify(fs.readdir);
   const lstat = util.promisify(fs.lstat);
 
-  return computeDiskPath(request.params.container, request.params.nestedPath, request.params)
+  const inputOrid = getRequestOrid(params);
+  const resourceId = inputOrid ? inputOrid.resourceId : params.container;
+
+  let getDiskPath;
+  if (inputOrid) {
+    if (inputOrid.resourceRider) {
+      getDiskPath = computeDiskPath(resourceId, inputOrid.resourceRider);
+    } else {
+      getDiskPath = computeDiskPath(resourceId);
+    }
+  } else if (request.params.nestedPath) {
+    getDiskPath = computeDiskPath(resourceId, request.params.nestedPath, request.params);
+  } else {
+    getDiskPath = computeDiskPath(resourceId);
+  }
+
+  return getDiskPath
     .then((meta) => readdir(meta.path)
       .then((contents) => {
         const filterDirs = (name) => ignoreDirectories.indexOf(name) === -1;
@@ -224,10 +278,18 @@ const listContainerPath = (request, response) => {
           .filter(filterDirs)
           .map((e) => lstat(path.join(meta.path, e)).then((r) => ({ path: e, stats: r })));
 
+        const makeOrid = (name) => orid.v1.generate(_.merge({}, oridBase, {
+          resourceId,
+          resourceRider: _.filter([recombineUrlParts(request.params, 'nestedPath'), name]).join('/'),
+          useSlashSeparator: true,
+        }));
+
         return Promise.all(children)
           .then((items) => {
-            const directories = items.filter((e) => e.stats.isDirectory()).map((e) => e.path);
-            const files = items.filter((e) => e.stats.isFile()).map((e) => e.path);
+            const directories = items.filter((e) => e.stats.isDirectory())
+              .map((e) => ({ name: e.path, orid: makeOrid(e.path) }));
+            const files = items.filter((e) => e.stats.isFile())
+              .map((e) => ({ name: e.path, orid: makeOrid(e.path) }));
 
             return sendResponse(response, 200, JSON.stringify({ directories, files }));
           });
