@@ -1,0 +1,4 @@
+This is a place holder file to keep this directory in github.
+Ideally, when a developer is working with the source code they
+will set the environment variable MDS_UPLOAD_FOLDER to the full
+path of this directory.
