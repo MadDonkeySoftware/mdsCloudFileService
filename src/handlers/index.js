@@ -5,15 +5,12 @@ const path = require('path');
 const util = require('util');
 const orid = require('@maddonkeysoftware/orid-node');
 
+const handlerHelpers = require('./handler-helpers');
 const globals = require('../globals');
 const helpers = require('../helpers');
-const specialPermissions = require('./special-permissions');
+
 const {
-  recombineUrlParts,
   computeDiskPath,
-  getRequestOrid,
-  parseForTruthy,
-  sendResponse,
 } = require('./common');
 
 const logger = globals.getLogger();
@@ -24,291 +21,269 @@ const ignoreDirectories = [
 ];
 
 const oridBase = {
-  provider: process.env.MDS_FS_PROVIDER_KEY,
-  custom3: 1, // TODO: Implement account
+  provider: process.env.ORID_PROVIDER_KEY,
   service: 'fs',
 };
 
+const makeOrid = ({
+  resourceId,
+  accountId,
+  resourceRider,
+}) => orid.v1.generate(_.merge({}, oridBase, {
+  resourceId,
+  custom3: accountId,
+  resourceRider,
+  useSlashSeparator: true,
+}));
+
 const uploadFile = (request, response) => {
-  const { params } = request;
+  const inputOrid = handlerHelpers.getOridFromRequest(request, 'orid');
+  const meta = computeDiskPath(inputOrid);
 
-  const inputOrid = getRequestOrid(params);
-  const resourceId = inputOrid ? inputOrid.resourceId : params.container;
+  logger.debug({ fileName: request.files.file.name, inputOrid }, 'Uploaded file');
 
-  logger.debug({ fileName: request.files.file.name, inputOrid, container: params.container }, 'Uploaded file');
-
-  return computeDiskPath(resourceId, request.params.nestedPath, request.params)
-    .then((meta) => helpers.saveRequestFile(
+  return Promise.resolve()
+    .then(() => helpers.saveRequestFile(
       request.files.file,
       path.join(meta.path, request.files.file.name),
-    ))
-    .then(() => {
+    )).then(() => {
       const body = {
-        orid: orid.v1.generate(_.merge({}, oridBase, {
-          resourceId,
-          resourceRider: _.filter([recombineUrlParts(request.params, 'nestedPath'), request.files.file.name]).join('/'),
-          useSlashSeparator: true,
-        })),
+        orid: makeOrid({
+          resourceId: inputOrid.resourceId,
+          accountId: inputOrid.custom3,
+          resourceRider: _.filter([inputOrid.resourceRider, request.files.file.name]).join('/'),
+        }),
       };
-      return sendResponse(response, 200, body);
-    })
-    .catch((err) => {
+      return handlerHelpers.sendResponse(response, 200, body);
+    }).catch((err) => {
       logger.warn(err);
-      return sendResponse(response, 500);
+      return handlerHelpers.sendResponse(response, 500);
     });
 };
 
 const createContainer = (request, response) => {
   const exists = util.promisify(fs.exists);
   const mkdir = util.promisify(fs.mkdir);
-
   const { params } = request;
+  const { name } = params;
 
-  const inputOrid = getRequestOrid(params);
-  const resourceId = inputOrid ? inputOrid.resourceId : params.container;
+  const inputOrid = makeOrid({
+    resourceId: name,
+    accountId: request.parsedToken.payload.accountId,
+  });
+  const newContainer = computeDiskPath(orid.v1.parse(inputOrid));
 
-  const parts = [
-    helpers.getEnvVar('MDS_UPLOAD_FOLDER'),
-    resourceId,
-  ];
+  return Promise.resolve()
+    .then(() => exists(newContainer.path)
+      .then((doesExist) => {
+        if (doesExist) {
+          return handlerHelpers.sendResponse(response, 409);
+        }
 
-  if (inputOrid && inputOrid.resourceId && inputOrid.resourceRider) {
-    parts.push(inputOrid.resourceRider);
-  } else if (!inputOrid && request.params.nestedPath) {
-    parts.push(recombineUrlParts(request.params, 'nestedPath'));
-  }
+        return mkdir(newContainer.path, { recursive: true })
+          .then(() => {
+            const body = {
+              orid: inputOrid,
+            };
+            return handlerHelpers.sendResponse(response, 201, body);
+          });
+      }))
+    .catch((err) => {
+      logger.warn(err);
+      return handlerHelpers.sendResponse(response, 500);
+    });
+};
 
-  return exists(path.join(...parts))
+const createContainerPath = (request, response) => {
+  const exists = util.promisify(fs.exists);
+  const mkdir = util.promisify(fs.mkdir);
+
+  const inputOrid = handlerHelpers.getOridFromRequest(request, 'orid');
+  const newContainer = computeDiskPath(inputOrid);
+
+  return Promise.resolve()
+    .then(() => exists(newContainer.path))
     .then((doesExist) => {
       if (doesExist) {
-        return sendResponse(response, 409);
+        return handlerHelpers.sendResponse(response, 409);
       }
 
-      // TODO: Handle nested paths
-      return mkdir(path.join(...parts), { recursive: true })
+      return mkdir(newContainer.path, { recursive: true })
         .then(() => {
-          let body;
-          if (inputOrid) {
-            body = {
-              orid: orid.v1.generate(_.merge({}, oridBase, {
-                resourceRider: inputOrid.resourceRider,
-                resourceId: inputOrid.resourceId,
-                useSlashSeparator: true,
-              })),
-            };
-          } else if (request.params.nestedPath) {
-            body = {
-              orid: orid.v1.generate(_.merge({}, oridBase, {
-                resourceId,
-                resourceRider: _.filter([recombineUrlParts(request.params, 'nestedPath')]).join('/'),
-                useSlashSeparator: true,
-              })),
-            };
-          } else {
-            body = {
-              orid: orid.v1.generate(_.merge({}, oridBase, {
-                resourceId,
-                useSlashSeparator: true,
-              })),
-            };
-          }
-          return sendResponse(response, 201, body);
+          const body = {
+            orid: makeOrid({
+              resourceRider: inputOrid.resourceRider,
+              resourceId: inputOrid.resourceId,
+              accountId: request.parsedToken.payload.accountId,
+            }),
+          };
+          return handlerHelpers.sendResponse(response, 201, body);
         });
     })
     .catch((err) => {
       logger.warn(err);
-      return sendResponse(response, 500);
+      return handlerHelpers.sendResponse(response, 500);
     });
 };
 
 const deleteContainer = (request, response) => {
   const exists = util.promisify(fs.exists);
 
-  const { params } = request;
+  const inputOrid = handlerHelpers.getOridFromRequest(request, 'orid');
+  const containerMeta = computeDiskPath(inputOrid);
 
-  const inputOrid = getRequestOrid(params);
-  const resourceId = inputOrid ? inputOrid.resourceId : params.container;
+  return exists(containerMeta.path)
+    .then((doesExist) => {
+      if (!doesExist) {
+        return handlerHelpers.sendResponse(response, 409);
+      }
 
-  let getDiskPath;
-  if (inputOrid) {
-    if (inputOrid.resourceRider) {
-      getDiskPath = computeDiskPath(resourceId, inputOrid.resourceRider);
-    } else {
-      getDiskPath = computeDiskPath(resourceId);
-    }
-  } else if (request.params.nestedPath) {
-    getDiskPath = computeDiskPath(resourceId, request.params.nestedPath, request.params);
-  } else {
-    getDiskPath = computeDiskPath(resourceId);
-  }
-
-  return getDiskPath
-    .then((meta) => exists(meta.path)
-      .then((doesExist) => {
-        if (!doesExist) {
-          return sendResponse(response, 409);
-        }
-
-        // Are we acting upon the container and are we allowed to delete the container
-        if (!request.params.nestedPath && !meta.delete) {
-          return sendResponse(response, 401);
-        }
-
-        // Are we acting upon a container object and are we allowed to delete container objects
-        if (request.params.nestedPath && !meta.deleteNested) {
-          return sendResponse(response, 401);
-        }
-
-        // TODO: Check whitelist / black list
-        return helpers.deleteFileOrPath(meta.path, { force: true })
-          .then(() => sendResponse(response, 204));
-      })
-      .catch((err) => {
-        logger.warn(err);
-        return sendResponse(response, 500);
-      }));
+      return helpers.deleteFileOrPath(containerMeta.path, { force: true })
+        .then(() => handlerHelpers.sendResponse(response, 204));
+    })
+    .catch((err) => {
+      logger.warn(err);
+      return handlerHelpers.sendResponse(response, 500);
+    });
 };
 
 const downloadFile = (request, response) => {
-  const { params } = request;
-
-  const inputOrid = getRequestOrid(params);
-  const resourceId = inputOrid ? inputOrid.resourceId : params.container;
-
-  let getDiskPath;
-  if (inputOrid) {
-    if (inputOrid.resourceRider) {
-      getDiskPath = computeDiskPath(resourceId, inputOrid.resourceRider);
-    } else {
-      getDiskPath = computeDiskPath(resourceId);
-    }
-  } else if (request.params.nestedPath) {
-    getDiskPath = computeDiskPath(resourceId, request.params.nestedPath, request.params);
-  } else {
-    getDiskPath = computeDiskPath(resourceId);
-  }
+  const inputOrid = handlerHelpers.getOridFromRequest(request, 'orid');
+  const meta = computeDiskPath(inputOrid);
 
   const errHandler = (err) => {
     if (err) {
       logger.warn({ err }, 'Error downloading file');
-      sendResponse(response, 500);
+      return handlerHelpers.sendResponse(response, 500);
     }
+    return Promise.resolve();
   };
 
-  return getDiskPath
-    .then((meta) => {
-      const subParts = meta.path.split('/');
-      const fileName = _.nth(subParts, -1);
-      helpers.downloadFile(response, meta.path, fileName, errHandler);
-    })
-    .catch(errHandler);
+  const subParts = meta.path.split('/');
+  const fileName = _.nth(subParts, -1);
+  return helpers.downloadFile(response, meta.path, fileName, errHandler);
 };
 
 const listContainers = (request, response) => {
+  const exists = util.promisify(fs.exists);
+  const readdir = util.promisify(fs.readdir);
+  const lstat = util.promisify(fs.lstat);
+  const { accountId } = request.parsedToken.payload;
+  const accountPath = path.join(helpers.getEnvVar('MDS_UPLOAD_FOLDER'), accountId);
+
+  return exists(accountPath)
+    .then((doesExist) => {
+      if (!doesExist) {
+        return handlerHelpers.sendResponse(response, 200, '[]');
+      }
+
+      return readdir(accountPath)
+        .then((contents) => {
+          const filterDirs = (name) => ignoreDirectories.indexOf(name) === -1;
+
+          const children = contents
+            .filter(filterDirs)
+            .map((e) => lstat(path.join(accountPath, e)).then((r) => ({ path: e, stats: r })));
+
+          return Promise.all(children)
+            .then((items) => items.filter((e) => e.stats.isDirectory()).map((e) => e.path))
+            .then((results) => _.map(results, (name) => ({
+              name,
+              orid: makeOrid({
+                resourceId: name,
+                accountId,
+              }),
+            })))
+            .then((results) => handlerHelpers.sendResponse(response, 200, JSON.stringify(results)));
+        })
+        .catch((err) => {
+          logger.warn(err);
+          return handlerHelpers.sendResponse(response, 500);
+        });
+    });
+};
+
+const listContainerPath = (request, response) => {
   const readdir = util.promisify(fs.readdir);
   const lstat = util.promisify(fs.lstat);
 
-  const addSpecialContainers = (base) => specialPermissions.get()
-    .then((special) => {
-      if (special && special.containers) {
-        Object.keys(special.containers).forEach(
-          (k) => parseForTruthy(special.containers[k].read) && base.push(k),
-        );
-      }
-      return base;
-    });
+  const inputOrid = handlerHelpers.getOridFromRequest(request, 'orid');
+  const meta = computeDiskPath(inputOrid);
 
-  return readdir(helpers.getEnvVar('MDS_UPLOAD_FOLDER'))
+  return readdir(meta.path)
     .then((contents) => {
       const filterDirs = (name) => ignoreDirectories.indexOf(name) === -1;
 
       const children = contents
         .filter(filterDirs)
-        .map((e) => lstat(path.join(helpers.getEnvVar('MDS_UPLOAD_FOLDER'), e)).then((r) => ({ path: e, stats: r })));
+        .map((e) => lstat(path.join(meta.path, e)).then((r) => ({ path: e, stats: r })));
 
       return Promise.all(children)
-        .then((items) => items.filter((e) => e.stats.isDirectory()).map((e) => e.path))
-        .then((results) => addSpecialContainers(results))
-        .then((results) => _.map(results, (name) => ({
-          name,
-          orid: orid.v1.generate(_.merge({}, oridBase, {
-            resourceId: name,
-            useSlashSeparator: true,
-          })),
-        })))
-        .then((results) => sendResponse(response, 200, JSON.stringify(results)));
-    })
-    .catch((err) => {
+        .then((items) => {
+          const directories = items.filter((e) => e.stats.isDirectory())
+            .map((e) => ({
+              name: e.path,
+              orid: makeOrid({
+                resourceId: inputOrid.resourceId,
+                accountId: inputOrid.custom3,
+                resourceRider: (inputOrid.resourceRider
+                  ? path.join(inputOrid.resourceRider, e.path)
+                  : e.path
+                ),
+              }),
+            }));
+          const files = items.filter((e) => e.stats.isFile())
+            .map((e) => ({
+              name: e.path,
+              orid: makeOrid({
+                resourceId: inputOrid.resourceId,
+                accountId: inputOrid.custom3,
+                resourceRider: (inputOrid.resourceRider
+                  ? path.join(inputOrid.resourceRider, e.path)
+                  : e.path
+                ),
+              }),
+            }));
+
+          const data = { directories, files };
+          return handlerHelpers.sendResponse(response, 200, JSON.stringify(data));
+        });
+    }).catch((err) => {
       logger.warn(err);
-      return sendResponse(response, 500);
+      return handlerHelpers.sendResponse(response, 500);
     });
 };
 
-const listContainerPath = (request, response) => {
-  const { params } = request;
-  const readdir = util.promisify(fs.readdir);
-  const lstat = util.promisify(fs.lstat);
-
-  const inputOrid = getRequestOrid(params);
-  const resourceId = inputOrid ? inputOrid.resourceId : params.container;
-
-  let getDiskPath;
-  if (inputOrid) {
-    if (inputOrid.resourceRider) {
-      getDiskPath = computeDiskPath(resourceId, inputOrid.resourceRider);
-    } else {
-      getDiskPath = computeDiskPath(resourceId);
-    }
-  } else if (request.params.nestedPath) {
-    getDiskPath = computeDiskPath(resourceId, request.params.nestedPath, request.params);
-  } else {
-    getDiskPath = computeDiskPath(resourceId);
-  }
-
-  return getDiskPath
-    .then((meta) => readdir(meta.path)
-      .then((contents) => {
-        const filterDirs = (name) => ignoreDirectories.indexOf(name) === -1;
-
-        if (!meta.read) {
-          return sendResponse(response, 401);
-        }
-
-        const children = contents
-          .filter(filterDirs)
-          .map((e) => lstat(path.join(meta.path, e)).then((r) => ({ path: e, stats: r })));
-
-        const makeOrid = (name) => orid.v1.generate(_.merge({}, oridBase, {
-          resourceId,
-          resourceRider: _.filter([recombineUrlParts(request.params, 'nestedPath'), name]).join('/'),
-          useSlashSeparator: true,
-        }));
-
-        return Promise.all(children)
-          .then((items) => {
-            const directories = items.filter((e) => e.stats.isDirectory())
-              .map((e) => ({ name: e.path, orid: makeOrid(e.path) }));
-            const files = items.filter((e) => e.stats.isFile())
-              .map((e) => ({ name: e.path, orid: makeOrid(e.path) }));
-
-            return sendResponse(response, 200, JSON.stringify({ directories, files }));
-          });
-      }))
-    .catch((err) => {
-      logger.warn(err);
-      return sendResponse(response, 500);
-    });
-};
-
-router.post('/upload/:container', uploadFile);
-router.post('/upload/:container/:nestedPath*', uploadFile);
-router.post('/create/:container', createContainer);
-router.post('/create/:container/:nestedPath*', createContainer);
-router.delete('/:container', deleteContainer);
-router.delete('/:container/:nestedPath*', deleteContainer);
-router.get('/download/:container/:nestedPath*', downloadFile);
-router.get('/containers', listContainers);
-router.get('/list/:container', listContainerPath);
-router.get('/list/:container/:nestedPath*', listContainerPath);
+router.post('/createContainer/:name',
+  handlerHelpers.validateToken(logger),
+  createContainer);
+router.post('/create/:orid*',
+  handlerHelpers.validateToken(logger),
+  handlerHelpers.ensureRequestOrid(true, 'orid'),
+  handlerHelpers.canAccessResource({ oridKey: 'orid', logger }),
+  createContainerPath);
+router.post('/upload/:orid*',
+  handlerHelpers.validateToken(logger),
+  handlerHelpers.ensureRequestOrid(false, 'orid'),
+  handlerHelpers.canAccessResource({ oridKey: 'orid', logger }),
+  uploadFile);
+router.delete('/:orid*',
+  handlerHelpers.validateToken(logger),
+  handlerHelpers.ensureRequestOrid(false, 'orid'),
+  handlerHelpers.canAccessResource({ oridKey: 'orid', logger }),
+  deleteContainer);
+router.get('/download/:orid*',
+  handlerHelpers.validateToken(logger),
+  handlerHelpers.ensureRequestOrid(false, 'orid'),
+  handlerHelpers.canAccessResource({ oridKey: 'orid', logger }),
+  downloadFile);
+router.get('/containers',
+  handlerHelpers.validateToken(logger),
+  listContainers);
+router.get('/list/:orid*',
+  handlerHelpers.validateToken(logger),
+  handlerHelpers.ensureRequestOrid(false, 'orid'),
+  handlerHelpers.canAccessResource({ oridKey: 'orid', logger }),
+  listContainerPath);
 
 module.exports = router;

@@ -3,3 +3,6 @@ docs/
 coverage/
 logs/
 *.log
+./upload-dir
+.nyc_output
+.vscode
