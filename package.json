@@ -27,7 +27,7 @@
     "bunyan": "^1.8.12",
     "del": "^5.1.0",
     "express": "^4.17.1",
-    "express-fileupload": "^1.1.6",
+    "express-fileupload": "^1.1.10",
     "jsonwebtoken": "^8.5.1",
     "lodash": "^4.17.15",
     "memory-cache": "^0.2.0",
