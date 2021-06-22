@@ -121,38 +121,44 @@ const handleBasicAuth = (request, response, next) => {
   const { headers } = request;
   const { authorization } = headers;
 
-  const encoded = authorization.split(' ')[1];
-  const credentials = Buffer.from(encoded, 'base64').toString('utf-8');
-  const [userId, password] = credentials.split(':');
+  if (authorization) {
+    const encoded = authorization.split(' ')[1];
+    const credentials = Buffer.from(encoded, 'base64').toString('utf-8');
+    const [userId, password] = credentials.split(':');
 
-  const inputOrid = handlerHelpers.getOridFromRequest(request, 'orid');
-  const accountId = inputOrid.custom3;
+    logger.debug({ userId }, 'Attempting to authenticate user');
+    const inputOrid = handlerHelpers.getOridFromRequest(request, 'orid');
+    const accountId = inputOrid.custom3;
 
-  const cacheKey = `${accountId}|${userId}`;
-  const cacheToken = memoryCache.get(cacheKey);
+    const cacheKey = `${accountId}|${userId}`;
+    const cacheToken = memoryCache.get(cacheKey);
 
-  if (cacheToken) {
-    request.headers.token = cacheToken;
-    return next();
+    if (cacheToken) {
+      request.headers.token = cacheToken;
+      return next();
+    }
+
+    const url = urlJoin(process.env.MDS_IDENTITY_URL, 'v1', 'authenticate');
+    const body = {
+      accountId,
+      userId,
+      password,
+    };
+    return axios.post(url, body)
+      .then((resp) => {
+        const { token } = resp.data;
+        request.headers.token = token;
+        const parsedToken = jwt.decode(token);
+        const bufferMs = 5000; // 5 seconds
+        const tokenExp = parsedToken.exp * 1000; // Convert to millisecond
+        const exp = tokenExp - new Date().getTime() - bufferMs;
+        memoryCache.put(cacheKey, resp.data.token, exp);
+        return next();
+      });
   }
 
-  const url = urlJoin(process.env.MDS_IDENTITY_URL, 'v1', 'authenticate');
-  const body = {
-    accountId,
-    userId,
-    password,
-  };
-  return axios.post(url, body)
-    .then((resp) => {
-      const { token } = resp.data;
-      request.headers.token = token;
-      const parsedToken = jwt.decode(token);
-      const bufferMs = 5000; // 5 seconds
-      const tokenExp = parsedToken.exp * 1000; // Convert to millisecond
-      const exp = tokenExp - new Date().getTime() - bufferMs;
-      memoryCache.put(cacheKey, resp.data.token, exp);
-      return next();
-    });
+  logger.trace({ headers }, 'basic auth handler missing authorization header');
+  return next();
 };
 
 const router = express.Router();
