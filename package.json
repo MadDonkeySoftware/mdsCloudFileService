@@ -22,7 +22,7 @@
   "homepage": "https://github.com/MadDonkeySoftware/mdsCloudFileService#readme",
   "dependencies": {
     "@maddonkeysoftware/orid-node": "^0.1.0",
-    "axios": "^0.21.1",
+    "axios": "^0.21.4",
     "body-parser": "^1.19.0",
     "bunyan": "^1.8.15",
     "del": "^6.0.0",
