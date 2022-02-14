@@ -10,9 +10,7 @@ const memoryCache = require('memory-cache');
 // https://www.terraform.io/docs/backends/types/http.html
 const globals = require('../globals');
 const handlerHelpers = require('./handler-helpers');
-const {
-  computeDiskPath,
-} = require('./common');
+const { computeDiskPath } = require('./common');
 
 const STATE_FILE = 'terraform.tfstate';
 const LOCK_FILE = 'terraform.lock';
@@ -26,15 +24,15 @@ const handleGet = (request, response) => {
   inputOrid.resourceRider = STATE_FILE;
   const meta = computeDiskPath(inputOrid);
 
-  return exists(meta.path)
-    .then((doesExist) => {
-      if (doesExist) {
-        return readFile(meta.path)
-          .then((data) => handlerHelpers.sendResponse(response, 200, data));
-      }
-      handlerHelpers.sendResponse(response, 200);
-      return undefined;
-    });
+  return exists(meta.path).then((doesExist) => {
+    if (doesExist) {
+      return readFile(meta.path).then((data) =>
+        handlerHelpers.sendResponse(response, 200, data),
+      );
+    }
+    handlerHelpers.sendResponse(response, 200);
+    return undefined;
+  });
 };
 
 const handlePost = (request, response) => {
@@ -47,7 +45,10 @@ const handlePost = (request, response) => {
   return writeFile(meta.path, JSON.stringify(body))
     .then(() => handlerHelpers.sendResponse(response, 200))
     .catch((err) => {
-      logger.warn({ err, inputOrid }, 'Error encountered saving TF state file.');
+      logger.warn(
+        { err, inputOrid },
+        'Error encountered saving TF state file.',
+      );
     });
 };
 
@@ -69,13 +70,14 @@ const handleDelete = (request, response) => {
       }
       return undefined;
     })
-    .then(() => exists(lockMeta.path)
-      .then((doesExist) => {
+    .then(() =>
+      exists(lockMeta.path).then((doesExist) => {
         if (doesExist) {
           return deleteFile(lockMeta.path);
         }
         return undefined;
-      }))
+      }),
+    )
     .then(() => handlerHelpers.sendResponse(response, 200));
 };
 
@@ -87,15 +89,15 @@ const handleLock = (request, response) => {
   inputOrid.resourceRider = LOCK_FILE;
   const meta = computeDiskPath(inputOrid);
 
-  return exists(meta.path)
-    .then((doesExist) => {
-      if (doesExist) {
-        handlerHelpers.sendResponse(response, 423); // HTTP locked
-        return undefined;
-      }
-      return writeFile(meta.path, JSON.stringify(request.body))
-        .then(() => handlerHelpers.sendResponse(response, 200));
-    });
+  return exists(meta.path).then((doesExist) => {
+    if (doesExist) {
+      handlerHelpers.sendResponse(response, 423); // HTTP locked
+      return undefined;
+    }
+    return writeFile(meta.path, JSON.stringify(request.body)).then(() =>
+      handlerHelpers.sendResponse(response, 200),
+    );
+  });
 };
 
 const handleUnlock = (request, response) => {
@@ -106,15 +108,15 @@ const handleUnlock = (request, response) => {
   inputOrid.resourceRider = LOCK_FILE;
   const meta = computeDiskPath(inputOrid);
 
-  return exists(meta.path)
-    .then((doesExist) => {
-      if (doesExist) {
-        return deleteFile(meta.path)
-          .then(() => handlerHelpers.sendResponse(response, 200));
-      }
-      handlerHelpers.sendResponse(response, 410);
-      return undefined;
-    });
+  return exists(meta.path).then((doesExist) => {
+    if (doesExist) {
+      return deleteFile(meta.path).then(() =>
+        handlerHelpers.sendResponse(response, 200),
+      );
+    }
+    handlerHelpers.sendResponse(response, 410);
+    return undefined;
+  });
 };
 
 const handleBasicAuth = (request, response, next) => {
@@ -144,17 +146,16 @@ const handleBasicAuth = (request, response, next) => {
       userId,
       password,
     };
-    return axios.post(url, body)
-      .then((resp) => {
-        const { token } = resp.data;
-        request.headers.token = token;
-        const parsedToken = jwt.decode(token);
-        const bufferMs = 5000; // 5 seconds
-        const tokenExp = parsedToken.exp * 1000; // Convert to millisecond
-        const exp = tokenExp - new Date().getTime() - bufferMs;
-        memoryCache.put(cacheKey, resp.data.token, exp);
-        return next();
-      });
+    return axios.post(url, body).then((resp) => {
+      const { token } = resp.data;
+      request.headers.token = token;
+      const parsedToken = jwt.decode(token);
+      const bufferMs = 5000; // 5 seconds
+      const tokenExp = parsedToken.exp * 1000; // Convert to millisecond
+      const exp = tokenExp - new Date().getTime() - bufferMs;
+      memoryCache.put(cacheKey, resp.data.token, exp);
+      return next();
+    });
   }
 
   logger.trace({ headers }, 'basic auth handler missing authorization header');
@@ -164,35 +165,45 @@ const handleBasicAuth = (request, response, next) => {
 const router = express.Router();
 router.use(bodyParser.json());
 
-router.get('/tf/:orid',
+router.get(
+  '/tf/:orid',
   handlerHelpers.ensureRequestOrid(false, 'orid'),
   handleBasicAuth,
   handlerHelpers.validateToken(logger),
   handlerHelpers.canAccessResource({ oridKey: 'orid', logger }),
-  handleGet);
-router.post('/tf/:orid',
+  handleGet,
+);
+router.post(
+  '/tf/:orid',
   handlerHelpers.ensureRequestOrid(false, 'orid'),
   handleBasicAuth,
   handlerHelpers.validateToken(logger),
   handlerHelpers.canAccessResource({ oridKey: 'orid', logger }),
-  handlePost);
-router.delete('/tf/:orid',
+  handlePost,
+);
+router.delete(
+  '/tf/:orid',
   handlerHelpers.ensureRequestOrid(false, 'orid'),
   handleBasicAuth,
   handlerHelpers.validateToken(logger),
   handlerHelpers.canAccessResource({ oridKey: 'orid', logger }),
-  handleDelete);
-router.lock('/tf/:orid',
+  handleDelete,
+);
+router.lock(
+  '/tf/:orid',
   handlerHelpers.ensureRequestOrid(false, 'orid'),
   handleBasicAuth,
   handlerHelpers.validateToken(logger),
   handlerHelpers.canAccessResource({ oridKey: 'orid', logger }),
-  handleLock);
-router.unlock('/tf/:orid',
+  handleLock,
+);
+router.unlock(
+  '/tf/:orid',
   handlerHelpers.ensureRequestOrid(false, 'orid'),
   handleBasicAuth,
   handlerHelpers.validateToken(logger),
   handlerHelpers.canAccessResource({ oridKey: 'orid', logger }),
-  handleUnlock);
+  handleUnlock,
+);
 
 module.exports = router;

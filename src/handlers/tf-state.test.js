@@ -11,9 +11,10 @@ const helpers = require('../helpers');
 const handlerHelpers = require('./handler-helpers');
 
 const ONE_HOUR = 1000 * 60 * 60;
-const getAuthString = (un, pass) => `Bearer ${Buffer.from(`${un}:${pass}`).toString('base64')}`;
+const getAuthString = (un, pass) =>
+  `Bearer ${Buffer.from(`${un}:${pass}`).toString('base64')}`;
 
-describe('src/handlers/tf-state', () => {
+describe(__filename, () => {
   let app;
   const testLockContainer = 'orid:1::::1:fs:test-container';
   const identityUrl = 'http://identity-server/';
@@ -27,9 +28,8 @@ describe('src/handlers/tf-state', () => {
   });
 
   // Act / Assert
-  it('using unhandled http verb returns error', () => supertest(app)
-    .patch(`/tf/${testLockContainer}`)
-    .expect(404));
+  it('using unhandled http verb returns error', () =>
+    supertest(app).patch(`/tf/${testLockContainer}`).expect(404));
 
   describe('authenticated call', () => {
     let nockIdentity;
@@ -37,14 +37,19 @@ describe('src/handlers/tf-state', () => {
     beforeEach(() => {
       nockIdentity = nock(identityUrl);
       process.env.MDS_IDENTITY_URL = identityUrl;
-      nockIdentity.post(
-        '/v1/authenticate',
-        { accountId: '1', userId: 'user', password: 'pass' },
-      ).reply(200, { token: 'testToken' });
+      nockIdentity
+        .post('/v1/authenticate', {
+          accountId: '1',
+          userId: 'user',
+          password: 'pass',
+        })
+        .reply(200, { token: 'testToken' });
       sinon.stub(jwt, 'decode').returns({
         exp: (new Date().getTime() + ONE_HOUR) / 1000,
       });
-      sinon.stub(handlerHelpers, 'getAppPublicSignature').returns('publicSignature');
+      sinon
+        .stub(handlerHelpers, 'getAppPublicSignature')
+        .returns('publicSignature');
       sinon.stub(handlerHelpers, 'getIssuer').returns('testIssuer');
       sinon.stub(jwt, 'verify').returns({
         payload: {
@@ -69,14 +74,18 @@ describe('src/handlers/tf-state', () => {
         const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
 
         getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
-        existsStub.withArgs('/tmp/mds-test/1/test-container/terraform.lock').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined, existsAnswer);
-          else cb(undefined, existsAnswer);
-        });
-        writeStub.withArgs('/tmp/mds-test/1/test-container/terraform.lock').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined);
-          else cb(undefined);
-        });
+        existsStub
+          .withArgs('/tmp/mds-test/1/test-container/terraform.lock')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined, existsAnswer);
+            else cb(undefined, existsAnswer);
+          });
+        writeStub
+          .withArgs('/tmp/mds-test/1/test-container/terraform.lock')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined);
+            else cb(undefined);
+          });
 
         // Act / Assert
         return supertest(app)
@@ -99,14 +108,18 @@ describe('src/handlers/tf-state', () => {
         const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
 
         getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
-        existsStub.withArgs('/tmp/mds-test/1/test-container/terraform.lock').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined, existsAnswer);
-          else cb(undefined, existsAnswer);
-        });
-        writeStub.withArgs('/tmp/mds-test/1/test-container/terraform.lock').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined);
-          else cb(undefined);
-        });
+        existsStub
+          .withArgs('/tmp/mds-test/1/test-container/terraform.lock')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined, existsAnswer);
+            else cb(undefined, existsAnswer);
+          });
+        writeStub
+          .withArgs('/tmp/mds-test/1/test-container/terraform.lock')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined);
+            else cb(undefined);
+          });
 
         // Act / Assert
         return supertest(app)
@@ -131,14 +144,18 @@ describe('src/handlers/tf-state', () => {
         const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
 
         getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
-        existsStub.withArgs('/tmp/mds-test/1/test-container/terraform.lock').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined, existsAnswer);
-          else cb(undefined, existsAnswer);
-        });
-        unlinkStub.withArgs('/tmp/mds-test/1/test-container/terraform.lock').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined);
-          else cb(undefined);
-        });
+        existsStub
+          .withArgs('/tmp/mds-test/1/test-container/terraform.lock')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined, existsAnswer);
+            else cb(undefined, existsAnswer);
+          });
+        unlinkStub
+          .withArgs('/tmp/mds-test/1/test-container/terraform.lock')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined);
+            else cb(undefined);
+          });
 
         // Act / Assert
         return supertest(app)
@@ -160,14 +177,18 @@ describe('src/handlers/tf-state', () => {
         const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
 
         getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
-        existsStub.withArgs('/tmp/mds-test/1/test-container/terraform.lock').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined, existsAnswer);
-          else cb(undefined, existsAnswer);
-        });
-        unlinkStub.withArgs('/tmp/mds-test/1/test-container/terraform.lock').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined);
-          else cb(undefined);
-        });
+        existsStub
+          .withArgs('/tmp/mds-test/1/test-container/terraform.lock')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined, existsAnswer);
+            else cb(undefined, existsAnswer);
+          });
+        unlinkStub
+          .withArgs('/tmp/mds-test/1/test-container/terraform.lock')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined);
+            else cb(undefined);
+          });
 
         // Act / Assert
         return supertest(app)
@@ -192,14 +213,18 @@ describe('src/handlers/tf-state', () => {
         const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
 
         getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
-        existsStub.withArgs('/tmp/mds-test/1/test-container/terraform.tfstate').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined, existsAnswer);
-          else cb(undefined, existsAnswer);
-        });
-        readFileStub.withArgs('/tmp/mds-test/1/test-container/terraform.tfstate').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined, stateBody);
-          else cb(undefined, stateBody);
-        });
+        existsStub
+          .withArgs('/tmp/mds-test/1/test-container/terraform.tfstate')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined, existsAnswer);
+            else cb(undefined, existsAnswer);
+          });
+        readFileStub
+          .withArgs('/tmp/mds-test/1/test-container/terraform.tfstate')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined, stateBody);
+            else cb(undefined, stateBody);
+          });
 
         // Act / Assert
         return supertest(app)
@@ -219,10 +244,12 @@ describe('src/handlers/tf-state', () => {
         const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
 
         getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
-        existsStub.withArgs('/tmp/mds-test/1/test-container/terraform.tfstate').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined, existsAnswer);
-          else cb(undefined, existsAnswer);
-        });
+        existsStub
+          .withArgs('/tmp/mds-test/1/test-container/terraform.tfstate')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined, existsAnswer);
+            else cb(undefined, existsAnswer);
+          });
 
         // Act / Assert
         return supertest(app)
@@ -243,10 +270,12 @@ describe('src/handlers/tf-state', () => {
         const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
 
         getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
-        writeFileStub.withArgs('/tmp/mds-test/1/test-container/terraform.tfstate').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined);
-          else cb(undefined);
-        });
+        writeFileStub
+          .withArgs('/tmp/mds-test/1/test-container/terraform.tfstate')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined);
+            else cb(undefined);
+          });
 
         // Act / Assert
         return supertest(app)
@@ -270,22 +299,30 @@ describe('src/handlers/tf-state', () => {
         const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
 
         getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
-        existsStub.withArgs('/tmp/mds-test/1/test-container/terraform.lock').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined, existsAnswer);
-          else cb(undefined, existsAnswer);
-        });
-        unlinkStub.withArgs('/tmp/mds-test/1/test-container/terraform.lock').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined);
-          else cb(undefined);
-        });
-        existsStub.withArgs('/tmp/mds-test/1/test-container/terraform.tfstate').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined, existsAnswer);
-          else cb(undefined, existsAnswer);
-        });
-        unlinkStub.withArgs('/tmp/mds-test/1/test-container/terraform.tfstate').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined);
-          else cb(undefined);
-        });
+        existsStub
+          .withArgs('/tmp/mds-test/1/test-container/terraform.lock')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined, existsAnswer);
+            else cb(undefined, existsAnswer);
+          });
+        unlinkStub
+          .withArgs('/tmp/mds-test/1/test-container/terraform.lock')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined);
+            else cb(undefined);
+          });
+        existsStub
+          .withArgs('/tmp/mds-test/1/test-container/terraform.tfstate')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined, existsAnswer);
+            else cb(undefined, existsAnswer);
+          });
+        unlinkStub
+          .withArgs('/tmp/mds-test/1/test-container/terraform.tfstate')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined);
+            else cb(undefined);
+          });
 
         // Act / Assert
         return supertest(app)
@@ -307,22 +344,30 @@ describe('src/handlers/tf-state', () => {
         const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
 
         getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
-        existsStub.withArgs('/tmp/mds-test/1/test-container/terraform.lock').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined, existsAnswer);
-          else cb(undefined, existsAnswer);
-        });
-        unlinkStub.withArgs('/tmp/mds-test/1/test-container/terraform.lock').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined);
-          else cb(undefined);
-        });
-        existsStub.withArgs('/tmp/mds-test/1/test-container/terraform.tfstate').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined, existsAnswer);
-          else cb(undefined, existsAnswer);
-        });
-        unlinkStub.withArgs('/tmp/mds-test/1/test-container/terraform.tfstate').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined);
-          else cb(undefined);
-        });
+        existsStub
+          .withArgs('/tmp/mds-test/1/test-container/terraform.lock')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined, existsAnswer);
+            else cb(undefined, existsAnswer);
+          });
+        unlinkStub
+          .withArgs('/tmp/mds-test/1/test-container/terraform.lock')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined);
+            else cb(undefined);
+          });
+        existsStub
+          .withArgs('/tmp/mds-test/1/test-container/terraform.tfstate')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined, existsAnswer);
+            else cb(undefined, existsAnswer);
+          });
+        unlinkStub
+          .withArgs('/tmp/mds-test/1/test-container/terraform.tfstate')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined);
+            else cb(undefined);
+          });
 
         // Act / Assert
         return supertest(app)
@@ -333,6 +378,28 @@ describe('src/handlers/tf-state', () => {
           .then((resp) => {
             chai.expect(resp.text).to.eql('');
             chai.expect(unlinkStub.callCount).to.eql(0);
+          });
+      });
+    });
+  });
+
+  describe('unauthenticated call', () => {
+    describe('lock', () => {
+      it('when no lock present returns lock', () => {
+        // Arrange
+        const writeStub = sinon.stub(fs, 'writeFile');
+
+        // Act / Assert
+        return supertest(app)
+          .lock(`/tf/${testLockContainer}`)
+          .send({ a: 1 })
+          .expect('content-type', /text\/plain/)
+          .expect(403)
+          .then((resp) => {
+            chai
+              .expect(resp.text)
+              .to.eql('Please include authentication token in header "token"');
+            chai.expect(writeStub.callCount).to.eql(0);
           });
       });
     });

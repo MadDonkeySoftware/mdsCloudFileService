@@ -15,7 +15,9 @@ describe('src/helpers', () => {
   describe('getEnvVar', () => {
     it('Reads env vars', () => {
       const keys = ['NODE_ENV', 'NONEXISTENT'];
-      _.map(keys, (k) => chai.expect(helpers.getEnvVar(k)).to.equal(process.env[k]));
+      _.map(keys, (k) =>
+        chai.expect(helpers.getEnvVar(k)).to.equal(process.env[k]),
+      );
     });
   });
 
@@ -42,9 +44,12 @@ describe('src/helpers', () => {
       });
 
       // Act / Assert
-      localHelpers.deleteFileOrPath('/some/test/path', { force: true }).then(() => {
-        chai.expect(delStub.calledWith('/some/test/path', { force: true })).to.be.true;
-      });
+      localHelpers
+        .deleteFileOrPath('/some/test/path', { force: true })
+        .then(() => {
+          chai.expect(delStub.calledWith('/some/test/path', { force: true })).to
+            .be.true;
+        });
     });
   });
 
@@ -60,7 +65,8 @@ describe('src/helpers', () => {
       helpers.downloadFile(req, '/some/path', 'file.txt', cb);
 
       // Assert
-      chai.expect(req.download.calledWith('/some/path', 'file.txt', cb)).to.be.true;
+      chai.expect(req.download.calledWith('/some/path', 'file.txt', cb)).to.be
+        .true;
     });
   });
 });

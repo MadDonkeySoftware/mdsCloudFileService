@@ -17,7 +17,9 @@ describe('src/handlers/index', () => {
 
   beforeEach(() => {
     sinon.stub(handlerHelpers, 'getIssuer').returns('testIssuer');
-    sinon.stub(handlerHelpers, 'getAppPublicSignature').resolves('publicSignature');
+    sinon
+      .stub(handlerHelpers, 'getAppPublicSignature')
+      .resolves('publicSignature');
     sinon.stub(jwt, 'verify').returns({
       payload: {
         iss: 'testIssuer',
@@ -39,15 +41,21 @@ describe('src/handlers/index', () => {
       const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
       const existsStub = sinon.stub(fs, 'exists');
 
-      existsStub.withArgs('/tmp/mds-test/1').callsFake((path, cb) => cb(undefined, true));
+      existsStub
+        .withArgs('/tmp/mds-test/1')
+        .callsFake((path, cb) => cb(undefined, true));
       getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
 
       readDirStub.withArgs('/tmp/mds-test/1').callsFake((path, opt, cb) => {
         if (cb === undefined) opt(undefined, containers);
         else cb(undefined, containers);
       });
-      lstatStub.withArgs('/tmp/mds-test/1/container1').callsFake((path, cb) => cb(undefined, { isDirectory: () => true }));
-      lstatStub.withArgs('/tmp/mds-test/1/container2').callsFake((path, cb) => cb(undefined, { isDirectory: () => true }));
+      lstatStub
+        .withArgs('/tmp/mds-test/1/container1')
+        .callsFake((path, cb) => cb(undefined, { isDirectory: () => true }));
+      lstatStub
+        .withArgs('/tmp/mds-test/1/container2')
+        .callsFake((path, cb) => cb(undefined, { isDirectory: () => true }));
 
       // Act / Assert
       return supertest(app)
@@ -57,7 +65,11 @@ describe('src/handlers/index', () => {
         .expect(200)
         .then((resp) => {
           const body = JSON.parse(resp.text);
-          chai.expect(body).to.deep.eql(containers.map((e) => ({ name: e, orid: `orid:1::::1:fs:${e}` })));
+          chai
+            .expect(body)
+            .to.deep.eql(
+              containers.map((e) => ({ name: e, orid: `orid:1::::1:fs:${e}` })),
+            );
         });
     });
 
@@ -66,7 +78,9 @@ describe('src/handlers/index', () => {
       const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
       const existsStub = sinon.stub(fs, 'exists');
 
-      existsStub.withArgs('/tmp/mds-test/1').callsFake((path, cb) => cb(undefined, false));
+      existsStub
+        .withArgs('/tmp/mds-test/1')
+        .callsFake((path, cb) => cb(undefined, false));
       getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
 
       // Act / Assert
@@ -89,7 +103,9 @@ describe('src/handlers/index', () => {
       const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
       getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
       getEnvVarStub.withArgs('MDS_SPECIAL_PERMISSIONS').returns(undefined);
-      existsStub.withArgs('/tmp/mds-test/1').callsFake((path, cb) => cb(undefined, true));
+      existsStub
+        .withArgs('/tmp/mds-test/1')
+        .callsFake((path, cb) => cb(undefined, true));
 
       readDirStub.throws(new Error('test error'));
 
@@ -115,7 +131,9 @@ describe('src/handlers/index', () => {
         getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
         getEnvVarStub.withArgs('MDS_SPECIAL_PERMISSIONS').returns(undefined);
 
-        existsStub.withArgs('/tmp/mds-test/1/test-container').callsFake((path, cb) => cb(undefined, true));
+        existsStub
+          .withArgs('/tmp/mds-test/1/test-container')
+          .callsFake((path, cb) => cb(undefined, true));
 
         // Act / Assert
         return supertest(app)
@@ -139,8 +157,12 @@ describe('src/handlers/index', () => {
         getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
         getEnvVarStub.withArgs('MDS_SPECIAL_PERMISSIONS').returns(undefined);
 
-        existsStub.withArgs('/tmp/mds-test/1/test-container').callsFake((path, cb) => cb(undefined, false));
-        mkdirStub.withArgs('/tmp/mds-test/1/test-container', { recursive: true }).callsFake((path, opts, cb) => cb(undefined));
+        existsStub
+          .withArgs('/tmp/mds-test/1/test-container')
+          .callsFake((path, cb) => cb(undefined, false));
+        mkdirStub
+          .withArgs('/tmp/mds-test/1/test-container', { recursive: true })
+          .callsFake((path, opts, cb) => cb(undefined));
 
         // Act / Assert
         return supertest(app)
@@ -152,7 +174,9 @@ describe('src/handlers/index', () => {
           .expect(201)
           .then((resp) => {
             const body = JSON.parse(resp.text);
-            chai.expect(body).to.deep.eql({ orid: 'orid:1::::1:fs:test-container' });
+            chai
+              .expect(body)
+              .to.deep.eql({ orid: 'orid:1::::1:fs:test-container' });
           });
       });
 
@@ -165,7 +189,9 @@ describe('src/handlers/index', () => {
         getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
         getEnvVarStub.withArgs('MDS_SPECIAL_PERMISSIONS').returns(undefined);
 
-        existsStub.withArgs('/tmp/mds-test/1/test-container').callsFake((path, cb) => cb(undefined, false));
+        existsStub
+          .withArgs('/tmp/mds-test/1/test-container')
+          .callsFake((path, cb) => cb(undefined, false));
         mkdirStub.throws(new Error('test error'));
 
         // Act / Assert
@@ -186,16 +212,17 @@ describe('src/handlers/index', () => {
   describe('create folder in container', () => {
     describe('orid path', () => {
       // Act / Assert
-      it('fails when missing sub path', () => supertest(app)
-        .post('/v1/create/orid:1::::1:fs:test-container')
-        .set('token', 'testToken')
-        .send()
-        .set('Accept', 'application/json')
-        .expect('content-type', /text\/plain.*/)
-        .expect(400)
-        .then((resp) => {
-          chai.expect(resp.text).to.eql('resource not understood');
-        }));
+      it('fails when missing sub path', () =>
+        supertest(app)
+          .post('/v1/create/orid:1::::1:fs:test-container')
+          .set('token', 'testToken')
+          .send()
+          .set('Accept', 'application/json')
+          .expect('content-type', /text\/plain.*/)
+          .expect(400)
+          .then((resp) => {
+            chai.expect(resp.text).to.eql('resource not understood');
+          }));
 
       it('folder in container does exist', () => {
         // Arrange
@@ -205,7 +232,9 @@ describe('src/handlers/index', () => {
         getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
         getEnvVarStub.withArgs('MDS_SPECIAL_PERMISSIONS').returns(undefined);
 
-        existsStub.withArgs('/tmp/mds-test/1/test-container/f1/f2').callsFake((path, cb) => cb(undefined, true));
+        existsStub
+          .withArgs('/tmp/mds-test/1/test-container/f1/f2')
+          .callsFake((path, cb) => cb(undefined, true));
 
         // Act / Assert
         return supertest(app)
@@ -229,8 +258,12 @@ describe('src/handlers/index', () => {
         getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
         getEnvVarStub.withArgs('MDS_SPECIAL_PERMISSIONS').returns(undefined);
 
-        existsStub.withArgs('/tmp/mds-test/1/test-container/test').callsFake((path, cb) => cb(undefined, false));
-        mkdirStub.withArgs('/tmp/mds-test/1/test-container/test', { recursive: true }).callsFake((path, opts, cb) => cb(undefined));
+        existsStub
+          .withArgs('/tmp/mds-test/1/test-container/test')
+          .callsFake((path, cb) => cb(undefined, false));
+        mkdirStub
+          .withArgs('/tmp/mds-test/1/test-container/test', { recursive: true })
+          .callsFake((path, opts, cb) => cb(undefined));
 
         // Act / Assert
         return supertest(app)
@@ -242,7 +275,9 @@ describe('src/handlers/index', () => {
           .expect(201)
           .then((resp) => {
             const body = JSON.parse(resp.text);
-            chai.expect(body).to.deep.eql({ orid: 'orid:1::::1:fs:test-container/test' });
+            chai
+              .expect(body)
+              .to.deep.eql({ orid: 'orid:1::::1:fs:test-container/test' });
           });
       });
 
@@ -283,7 +318,9 @@ describe('src/handlers/index', () => {
         const saveRequestFileStub = sinon.stub(helpers, 'saveRequestFile');
         saveRequestFileStub.resolves();
 
-        existsStub.withArgs('/tmp/mds-test/1/test-container/f1/f2').callsFake((path, cb) => cb(undefined, true));
+        existsStub
+          .withArgs('/tmp/mds-test/1/test-container/f1/f2')
+          .callsFake((path, cb) => cb(undefined, true));
 
         // Act / Assert
         return supertest(app)
@@ -295,7 +332,9 @@ describe('src/handlers/index', () => {
           .expect(200)
           .then((resp) => {
             const body = JSON.parse(resp.text);
-            chai.expect(body).to.deep.eql({ orid: 'orid:1::::1:fs:test-container/f1/f2/README.md' });
+            chai.expect(body).to.deep.eql({
+              orid: 'orid:1::::1:fs:test-container/f1/f2/README.md',
+            });
           });
       });
 
@@ -309,7 +348,9 @@ describe('src/handlers/index', () => {
         const saveRequestFileStub = sinon.stub(helpers, 'saveRequestFile');
         saveRequestFileStub.throws(new Error('test error'));
 
-        existsStub.withArgs('/tmp/mds-test/1/test-container/f1/f2').callsFake((path, cb) => cb(undefined, true));
+        existsStub
+          .withArgs('/tmp/mds-test/1/test-container/f1/f2')
+          .callsFake((path, cb) => cb(undefined, true));
 
         // Act / Assert
         return supertest(app)
@@ -339,7 +380,9 @@ describe('src/handlers/index', () => {
 
         delStub.resolves();
 
-        existsStub.withArgs('/tmp/mds-test/1/test-container/f1/f2').callsFake((path, cb) => cb(undefined, true));
+        existsStub
+          .withArgs('/tmp/mds-test/1/test-container/f1/f2')
+          .callsFake((path, cb) => cb(undefined, true));
 
         // Act / Assert
         return supertest(app)
@@ -363,7 +406,9 @@ describe('src/handlers/index', () => {
 
         delStub.resolves();
 
-        existsStub.withArgs('/tmp/mds-test/1/test-container').callsFake((path, cb) => cb(undefined, true));
+        existsStub
+          .withArgs('/tmp/mds-test/1/test-container')
+          .callsFake((path, cb) => cb(undefined, true));
 
         // Act / Assert
         return supertest(app)
@@ -387,7 +432,9 @@ describe('src/handlers/index', () => {
 
         delStub.resolves();
 
-        existsStub.withArgs('/tmp/mds-test/1/test-container').callsFake((path, cb) => cb(undefined, false));
+        existsStub
+          .withArgs('/tmp/mds-test/1/test-container')
+          .callsFake((path, cb) => cb(undefined, false));
 
         // Act / Assert
         return supertest(app)
@@ -435,7 +482,13 @@ describe('src/handlers/index', () => {
         getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
         getEnvVarStub.withArgs('MDS_SPECIAL_PERMISSIONS').returns(undefined);
 
-        downloadStub.withArgs(sinon.match.object, '/tmp/mds-test/1/test-container/file.txt', 'file.txt', sinon.match.func)
+        downloadStub
+          .withArgs(
+            sinon.match.object,
+            '/tmp/mds-test/1/test-container/file.txt',
+            'file.txt',
+            sinon.match.func,
+          )
           .callsFake((res, fp, fn, cb) => {
             cb(undefined);
             res.status(200);
@@ -461,7 +514,13 @@ describe('src/handlers/index', () => {
         getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
         getEnvVarStub.withArgs('MDS_SPECIAL_PERMISSIONS').returns(undefined);
 
-        downloadStub.withArgs(sinon.match.object, '/tmp/mds-test/1/test-container/file.txt', 'file.txt', sinon.match.func)
+        downloadStub
+          .withArgs(
+            sinon.match.object,
+            '/tmp/mds-test/1/test-container/file.txt',
+            'file.txt',
+            sinon.match.func,
+          )
           .callsFake((req, fp, fn, cb) => {
             cb(new Error('test error'));
           });
@@ -485,28 +544,44 @@ describe('src/handlers/index', () => {
         // Arrange
         const readDirStub = sinon.stub(fs, 'readdir');
         const lstatStub = sinon.stub(fs, 'lstat');
-        const dirItems = [
-          'dir1',
-          'dir2',
-          'file1',
-          'file2',
-          '#recycle',
-        ];
+        const dirItems = ['dir1', 'dir2', 'file1', 'file2', '#recycle'];
 
         const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
         getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
         getEnvVarStub.withArgs('MDS_SPECIAL_PERMISSIONS').returns(undefined);
 
-        readDirStub.withArgs('/tmp/mds-test/1/test-container').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined, dirItems);
-          else cb(undefined, dirItems);
-        });
+        readDirStub
+          .withArgs('/tmp/mds-test/1/test-container')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined, dirItems);
+            else cb(undefined, dirItems);
+          });
 
-        lstatStub.withArgs('/tmp/mds-test/1/test-container/dir1').callsFake((path, cb) => cb(undefined, { isDirectory: () => true, isFile: () => false }));
-        lstatStub.withArgs('/tmp/mds-test/1/test-container/dir2').callsFake((path, cb) => cb(undefined, { isDirectory: () => true, isFile: () => false }));
-        lstatStub.withArgs('/tmp/mds-test/1/test-container/file1').callsFake((path, cb) => cb(undefined, { isDirectory: () => false, isFile: () => true }));
-        lstatStub.withArgs('/tmp/mds-test/1/test-container/file2').callsFake((path, cb) => cb(undefined, { isDirectory: () => false, isFile: () => true }));
-        lstatStub.withArgs('/tmp/mds-test/1/test-container/#recycle').callsFake((path, cb) => cb(undefined, { isDirectory: () => true, isFile: () => false }));
+        lstatStub
+          .withArgs('/tmp/mds-test/1/test-container/dir1')
+          .callsFake((path, cb) =>
+            cb(undefined, { isDirectory: () => true, isFile: () => false }),
+          );
+        lstatStub
+          .withArgs('/tmp/mds-test/1/test-container/dir2')
+          .callsFake((path, cb) =>
+            cb(undefined, { isDirectory: () => true, isFile: () => false }),
+          );
+        lstatStub
+          .withArgs('/tmp/mds-test/1/test-container/file1')
+          .callsFake((path, cb) =>
+            cb(undefined, { isDirectory: () => false, isFile: () => true }),
+          );
+        lstatStub
+          .withArgs('/tmp/mds-test/1/test-container/file2')
+          .callsFake((path, cb) =>
+            cb(undefined, { isDirectory: () => false, isFile: () => true }),
+          );
+        lstatStub
+          .withArgs('/tmp/mds-test/1/test-container/#recycle')
+          .callsFake((path, cb) =>
+            cb(undefined, { isDirectory: () => true, isFile: () => false }),
+          );
 
         // Act / Assert
         return supertest(app)
@@ -533,28 +608,44 @@ describe('src/handlers/index', () => {
         // Arrange
         const readDirStub = sinon.stub(fs, 'readdir');
         const lstatStub = sinon.stub(fs, 'lstat');
-        const dirItems = [
-          'dir1',
-          'dir2',
-          'file1',
-          'file2',
-          '#recycle',
-        ];
+        const dirItems = ['dir1', 'dir2', 'file1', 'file2', '#recycle'];
 
         const getEnvVarStub = sinon.stub(helpers, 'getEnvVar');
         getEnvVarStub.withArgs('MDS_UPLOAD_FOLDER').returns('/tmp/mds-test');
         getEnvVarStub.withArgs('MDS_SPECIAL_PERMISSIONS').returns(undefined);
 
-        readDirStub.withArgs('/tmp/mds-test/1/test-container/subdir1').callsFake((path, opt, cb) => {
-          if (cb === undefined) opt(undefined, dirItems);
-          else cb(undefined, dirItems);
-        });
+        readDirStub
+          .withArgs('/tmp/mds-test/1/test-container/subdir1')
+          .callsFake((path, opt, cb) => {
+            if (cb === undefined) opt(undefined, dirItems);
+            else cb(undefined, dirItems);
+          });
 
-        lstatStub.withArgs('/tmp/mds-test/1/test-container/subdir1/dir1').callsFake((path, cb) => cb(undefined, { isDirectory: () => true, isFile: () => false }));
-        lstatStub.withArgs('/tmp/mds-test/1/test-container/subdir1/dir2').callsFake((path, cb) => cb(undefined, { isDirectory: () => true, isFile: () => false }));
-        lstatStub.withArgs('/tmp/mds-test/1/test-container/subdir1/file1').callsFake((path, cb) => cb(undefined, { isDirectory: () => false, isFile: () => true }));
-        lstatStub.withArgs('/tmp/mds-test/1/test-container/subdir1/file2').callsFake((path, cb) => cb(undefined, { isDirectory: () => false, isFile: () => true }));
-        lstatStub.withArgs('/tmp/mds-test/1/test-container/subdir1/#recycle').callsFake((path, cb) => cb(undefined, { isDirectory: () => true, isFile: () => false }));
+        lstatStub
+          .withArgs('/tmp/mds-test/1/test-container/subdir1/dir1')
+          .callsFake((path, cb) =>
+            cb(undefined, { isDirectory: () => true, isFile: () => false }),
+          );
+        lstatStub
+          .withArgs('/tmp/mds-test/1/test-container/subdir1/dir2')
+          .callsFake((path, cb) =>
+            cb(undefined, { isDirectory: () => true, isFile: () => false }),
+          );
+        lstatStub
+          .withArgs('/tmp/mds-test/1/test-container/subdir1/file1')
+          .callsFake((path, cb) =>
+            cb(undefined, { isDirectory: () => false, isFile: () => true }),
+          );
+        lstatStub
+          .withArgs('/tmp/mds-test/1/test-container/subdir1/file2')
+          .callsFake((path, cb) =>
+            cb(undefined, { isDirectory: () => false, isFile: () => true }),
+          );
+        lstatStub
+          .withArgs('/tmp/mds-test/1/test-container/subdir1/#recycle')
+          .callsFake((path, cb) =>
+            cb(undefined, { isDirectory: () => true, isFile: () => false }),
+          );
 
         // Act / Assert
         return supertest(app)
@@ -566,12 +657,24 @@ describe('src/handlers/index', () => {
             const body = JSON.parse(resp.text);
             chai.expect(body).to.deep.eql({
               directories: [
-                { name: 'dir1', orid: 'orid:1::::1:fs:test-container/subdir1/dir1' },
-                { name: 'dir2', orid: 'orid:1::::1:fs:test-container/subdir1/dir2' },
+                {
+                  name: 'dir1',
+                  orid: 'orid:1::::1:fs:test-container/subdir1/dir1',
+                },
+                {
+                  name: 'dir2',
+                  orid: 'orid:1::::1:fs:test-container/subdir1/dir2',
+                },
               ],
               files: [
-                { name: 'file1', orid: 'orid:1::::1:fs:test-container/subdir1/file1' },
-                { name: 'file2', orid: 'orid:1::::1:fs:test-container/subdir1/file2' },
+                {
+                  name: 'file1',
+                  orid: 'orid:1::::1:fs:test-container/subdir1/file1',
+                },
+                {
+                  name: 'file2',
+                  orid: 'orid:1::::1:fs:test-container/subdir1/file2',
+                },
               ],
             });
           });
