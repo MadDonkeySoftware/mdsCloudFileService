@@ -14,7 +14,7 @@ const ONE_HOUR = 1000 * 60 * 60;
 const getAuthString = (un, pass) =>
   `Bearer ${Buffer.from(`${un}:${pass}`).toString('base64')}`;
 
-describe('src/handlers/tf-state', () => {
+describe(__filename, () => {
   let app;
   const testLockContainer = 'orid:1::::1:fs:test-container';
   const identityUrl = 'http://identity-server/';
@@ -378,6 +378,28 @@ describe('src/handlers/tf-state', () => {
           .then((resp) => {
             chai.expect(resp.text).to.eql('');
             chai.expect(unlinkStub.callCount).to.eql(0);
+          });
+      });
+    });
+  });
+
+  describe('unauthenticated call', () => {
+    describe('lock', () => {
+      it('when no lock present returns lock', () => {
+        // Arrange
+        const writeStub = sinon.stub(fs, 'writeFile');
+
+        // Act / Assert
+        return supertest(app)
+          .lock(`/tf/${testLockContainer}`)
+          .send({ a: 1 })
+          .expect('content-type', /text\/plain/)
+          .expect(403)
+          .then((resp) => {
+            chai
+              .expect(resp.text)
+              .to.eql('Please include authentication token in header "token"');
+            chai.expect(writeStub.callCount).to.eql(0);
           });
       });
     });
