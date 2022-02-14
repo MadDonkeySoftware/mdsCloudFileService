@@ -28,8 +28,8 @@ const deleteFileOrPath = (fileOrPath, options) => del(fileOrPath, options);
  * @param {*} filename the file name that the user will be provided
  * @param {*} callback the callback to indicate completion or failure
  */
-const downloadFile = (response, filePath, filename, callback) => (
-  response.download(filePath, filename, callback));
+const downloadFile = (response, filePath, filename, callback) =>
+  response.download(filePath, filename, callback);
 
 module.exports = {
   getEnvVar,
