@@ -28,7 +28,7 @@
     "body-parser": "^1.19.1",
     "bunyan": "^1.8.15",
     "del": "^6.0.0",
-    "express": "^4.17.2",
+    "express": "^4.17.3",
     "express-fileupload": "^1.3.1",
     "jsonwebtoken": "^8.5.1",
     "lodash": "^4.17.21",
