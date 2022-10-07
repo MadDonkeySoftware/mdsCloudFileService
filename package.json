@@ -25,7 +25,7 @@
   "dependencies": {
     "@maddonkeysoftware/orid-node": "^0.1.0",
     "axios": "^0.26.0",
-    "body-parser": "^1.19.1",
+    "body-parser": "^1.20.1",
     "bunyan": "^1.8.15",
     "del": "^6.0.0",
     "express": "^4.17.2",
