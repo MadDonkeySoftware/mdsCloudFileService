@@ -121,6 +121,7 @@ describe('disk-repo', () => {
       // Assert
       expect(mockDel.default).toHaveBeenCalledWith(
         `${TEST_UPLOAD_DIR}/${TEST_ACCOUNT}/${TEST_RESOURCE}`,
+        { force: true },
       );
     });
 
@@ -136,6 +137,7 @@ describe('disk-repo', () => {
       // Assert
       expect(mockDel.default).toHaveBeenCalledWith(
         `${TEST_UPLOAD_DIR}/${TEST_ACCOUNT}/${TEST_RESOURCE}/nested`,
+        { force: true },
       );
     });
   });

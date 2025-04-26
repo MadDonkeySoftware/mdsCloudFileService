@@ -1,5 +1,5 @@
 import { buildApp } from '../index';
-import { FastifyInstance } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 
 describe('presentation', () => {
   let app: FastifyInstance | undefined;
