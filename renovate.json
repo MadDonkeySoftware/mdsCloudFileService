@@ -8,5 +8,9 @@
     "matchDatasources": ["npm"],
     "automerge": true,
     "automergeType": "pr"
-  }]
+  }],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true,
+  }
 }
