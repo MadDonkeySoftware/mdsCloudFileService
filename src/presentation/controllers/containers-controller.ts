@@ -25,7 +25,7 @@ export function containersController(
     {
       schema: {
         response: {
-          200: {
+          201: {
             type: 'object',
             properties: {
               orid: {
@@ -175,15 +175,27 @@ export function containersController(
           204: {
             type: 'null',
           },
+          404: {
+            type: 'null',
+          },
         },
       },
     },
     async (request, response) => {
       const orid = getOridFromRequest(request);
       request.log.debug({ orid }, 'Deleting container');
-      await request.services.logic.deleteFileOrDirectory(orid);
-      response.status(204);
-      response.send();
+      try {
+        await request.services.logic.deleteFileOrDirectory(orid);
+        response.status(204);
+        response.send();
+      } catch (err) {
+        if (err instanceof ResourceNotFoundError) {
+          response.status(404);
+          response.send();
+          return;
+        }
+        throw err;
+      }
     },
   );
 

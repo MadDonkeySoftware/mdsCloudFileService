@@ -36,6 +36,13 @@ export function diContainerInit({
     mdsAuthManager: asFunction(
       () => {
         const mdsSdkConfig = config.get<Record<string, string>>('mdsSdk');
+        const reqiredKeys = ['identityUrl', 'account', 'userId', 'password'];
+        const missingKeys = reqiredKeys.filter((key) => !mdsSdkConfig[key]);
+        if (missingKeys.length > 0) {
+          throw new Error(
+            `Missing required MDS SDK configuration keys: ${missingKeys.join(', ')}`,
+          );
+        }
         return new MdsSdkAuthManager({
           cache: new InMemoryCache(),
           ...mdsSdkConfig,

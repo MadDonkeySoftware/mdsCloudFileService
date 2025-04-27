@@ -9,6 +9,11 @@ void (async () => {
   const port = config.get<number>('apiPort');
   const app = await buildApp();
 
+  const uploadFolder = config.get<string>('uploadFolder');
+  if (!uploadFolder) {
+    throw new Error('Configuration error: uploadFolder is not defined');
+  }
+
   try {
     const address = await app.listen({ port, host: '::' });
 

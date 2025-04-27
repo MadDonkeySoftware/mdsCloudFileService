@@ -83,4 +83,26 @@ describe('get-file-upload-and-form-fields', () => {
     expect(fieldValues).toEqual({ test: 'test', test2: undefined });
     expect(cleanupCallback).toBeDefined();
   });
+
+  it('Cleanup callback gracefully handles errors during cleanup', async () => {
+    // Arrange
+    mockRm.mockRejectedValueOnce(new Error('Failed to delete file'));
+    const fakeRequest = {
+      parseMultipart: jest.fn().mockResolvedValue({}),
+      [kFileSavedPaths]: ['filePath1', 'filePath2'],
+      log: {
+        error: jest.fn(),
+      },
+    };
+    const { cleanupCallback } = await getFileUploadAndFormFields(
+      fakeRequest as unknown as FastifyRequest,
+      {
+        fields: [{ key: 'test' }],
+      },
+    );
+
+    // Act & Assert
+    await expect(cleanupCallback()).resolves.not.toThrow();
+    expect(mockRm).toHaveBeenCalledTimes(2);
+  });
 });

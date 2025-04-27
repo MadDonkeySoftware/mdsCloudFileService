@@ -6,9 +6,8 @@ import { TerraformLockExistsError } from '../../errors/terraform-lock-exists-err
 import { ResourceExistsError } from '../../errors/resource-exists-error';
 
 describe('Logic', () => {
-  let logic: Logic;
   let orid: v1.V1Orid;
-  const diskRepoMock = {
+  const makeDiskRepoMock = () => ({
     doesFileExist: jest.fn(),
     writeFile: jest.fn(),
     delete: jest.fn(),
@@ -18,12 +17,11 @@ describe('Logic', () => {
     getInternalFilePath: jest.fn(),
     getContainers: jest.fn(),
     getContents: jest.fn(),
-  };
+  });
 
   beforeEach(() => {
-    logic = new Logic({ diskRepo: diskRepoMock as unknown as DiskRepo });
     orid = v1.parse('orid:1:test-provider:::1001:fs:test-resource');
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   afterAll(() => {
@@ -33,9 +31,13 @@ describe('Logic', () => {
   describe('createTerraformLock', () => {
     it('creates terraform lock successfully', async () => {
       // Arrange
+      const diskRepoMock = makeDiskRepoMock();
       diskRepoMock.doesFileExist.mockResolvedValueOnce(false);
 
       // Act
+      const logic = new Logic({
+        diskRepo: diskRepoMock as unknown as DiskRepo,
+      });
       await logic.createTerraformLock(orid);
 
       // Assert
@@ -44,9 +46,13 @@ describe('Logic', () => {
 
     it('throws error when creating existing terraform lock', async () => {
       // Arrange
+      const diskRepoMock = makeDiskRepoMock();
       diskRepoMock.doesFileExist.mockResolvedValueOnce(true);
 
       // Act
+      const logic = new Logic({
+        diskRepo: diskRepoMock as unknown as DiskRepo,
+      });
       await expect(logic.createTerraformLock(orid)).rejects.toThrow(
         TerraformLockExistsError,
       );
@@ -59,9 +65,13 @@ describe('Logic', () => {
   describe('releaseTerraformLock', () => {
     it('releases terraform lock successfully', async () => {
       // Arrange
+      const diskRepoMock = makeDiskRepoMock();
       diskRepoMock.doesFileExist.mockResolvedValueOnce(true);
 
       // Act
+      const logic = new Logic({
+        diskRepo: diskRepoMock as unknown as DiskRepo,
+      });
       await logic.releaseTerraformLock(orid);
 
       // Assert
@@ -71,9 +81,13 @@ describe('Logic', () => {
 
     it('throws error when releasing non-existing terraform lock', async () => {
       // Arrange
+      const diskRepoMock = makeDiskRepoMock();
       diskRepoMock.doesFileExist.mockResolvedValueOnce(false);
 
       // Act
+      const logic = new Logic({
+        diskRepo: diskRepoMock as unknown as DiskRepo,
+      });
       await expect(logic.releaseTerraformLock(orid)).rejects.toThrow(
         ResourceNotFoundError,
       );
@@ -86,10 +100,14 @@ describe('Logic', () => {
   describe('removeTerraformMetadata', () => {
     it('removes terraform metadata successfully', async () => {
       // Arrange
+      const diskRepoMock = makeDiskRepoMock();
       diskRepoMock.doesFileExist.mockResolvedValueOnce(true);
       diskRepoMock.doesFileExist.mockResolvedValueOnce(true);
 
       // Act
+      const logic = new Logic({
+        diskRepo: diskRepoMock as unknown as DiskRepo,
+      });
       await logic.removeTerraformMetadata(orid);
 
       // Assert
@@ -101,9 +119,13 @@ describe('Logic', () => {
   describe('saveTerraformState', () => {
     it('saves terraform state successfully with object body', async () => {
       // Arrange
+      const diskRepoMock = makeDiskRepoMock();
       const body = { key: 'value' };
 
       // Act
+      const logic = new Logic({
+        diskRepo: diskRepoMock as unknown as DiskRepo,
+      });
       await logic.saveTerraformState(orid, body);
 
       // Assert
@@ -112,9 +134,13 @@ describe('Logic', () => {
 
     it('saves terraform state successfully with string body', async () => {
       // Arrange
+      const diskRepoMock = makeDiskRepoMock();
       const body = '{"key":"value"}';
 
       // Act
+      const logic = new Logic({
+        diskRepo: diskRepoMock as unknown as DiskRepo,
+      });
       await logic.saveTerraformState(orid, body);
 
       // Assert
@@ -125,10 +151,14 @@ describe('Logic', () => {
   describe('getTerraformState', () => {
     it('gets terraform state successfully', async () => {
       // Arrange
+      const diskRepoMock = makeDiskRepoMock();
       diskRepoMock.doesFileExist.mockResolvedValueOnce(true);
       diskRepoMock.readFile.mockResolvedValueOnce('{"key":"value"}');
 
       // Act
+      const logic = new Logic({
+        diskRepo: diskRepoMock as unknown as DiskRepo,
+      });
       const state = await logic.getTerraformState(orid);
 
       // Assert
@@ -139,9 +169,13 @@ describe('Logic', () => {
 
     it('throws error when getting non-existing terraform state', async () => {
       // Arrange
+      const diskRepoMock = makeDiskRepoMock();
       diskRepoMock.doesFileExist.mockResolvedValueOnce(false);
 
       // Act
+      const logic = new Logic({
+        diskRepo: diskRepoMock as unknown as DiskRepo,
+      });
       await expect(logic.getTerraformState(orid)).rejects.toThrow(
         ResourceNotFoundError,
       );
@@ -154,9 +188,13 @@ describe('Logic', () => {
   describe('createContainerOrDirectory', () => {
     it('creates container or directory successfully', async () => {
       // Arrange
+      const diskRepoMock = makeDiskRepoMock();
       diskRepoMock.doesFileExist.mockResolvedValueOnce(false);
 
       // Act
+      const logic = new Logic({
+        diskRepo: diskRepoMock as unknown as DiskRepo,
+      });
       await logic.createContainerOrDirectory(orid);
 
       // Assert
@@ -166,9 +204,13 @@ describe('Logic', () => {
 
     it('throws error when creating existing container or directory', async () => {
       // Arrange
+      const diskRepoMock = makeDiskRepoMock();
       diskRepoMock.doesFileExist.mockResolvedValueOnce(true);
 
       // Act
+      const logic = new Logic({
+        diskRepo: diskRepoMock as unknown as DiskRepo,
+      });
       await expect(logic.createContainerOrDirectory(orid)).rejects.toThrow(
         ResourceExistsError,
       );
@@ -181,10 +223,14 @@ describe('Logic', () => {
   describe('saveFile', () => {
     it('saves top level file successfully', async () => {
       // Arrange
+      const diskRepoMock = makeDiskRepoMock();
       const fileName = 'test-file';
       const file = 'test-file-content';
 
       // Act
+      const logic = new Logic({
+        diskRepo: diskRepoMock as unknown as DiskRepo,
+      });
       const outOrid = await logic.saveFile(orid, fileName, file);
 
       // Assert
@@ -196,6 +242,7 @@ describe('Logic', () => {
 
     it('saves nested file successfully', async () => {
       // Arrange
+      const diskRepoMock = makeDiskRepoMock();
       const fileName = 'test-file';
       const file = 'test-file-content';
       const orid = v1.parse(
@@ -203,6 +250,9 @@ describe('Logic', () => {
       );
 
       // Act
+      const logic = new Logic({
+        diskRepo: diskRepoMock as unknown as DiskRepo,
+      });
       const outOrid = await logic.saveFile(orid, fileName, file);
 
       // Assert
@@ -218,9 +268,13 @@ describe('Logic', () => {
   describe('deleteFileOrDirectory', () => {
     it('deletes file or directory successfully', async () => {
       // Arrange
+      const diskRepoMock = makeDiskRepoMock();
       diskRepoMock.doesFileExist.mockResolvedValueOnce(true);
 
       // Act
+      const logic = new Logic({
+        diskRepo: diskRepoMock as unknown as DiskRepo,
+      });
       await logic.deleteFileOrDirectory(orid);
 
       // Assert
@@ -230,9 +284,13 @@ describe('Logic', () => {
 
     it('throws error when deleting non-existing file or directory', async () => {
       // Arrange
+      const diskRepoMock = makeDiskRepoMock();
       diskRepoMock.doesFileExist.mockResolvedValueOnce(false);
 
       // Act
+      const logic = new Logic({
+        diskRepo: diskRepoMock as unknown as DiskRepo,
+      });
       await expect(logic.deleteFileOrDirectory(orid)).rejects.toThrow(
         ResourceNotFoundError,
       );
@@ -245,6 +303,7 @@ describe('Logic', () => {
   describe('getInternalFilePath', () => {
     it('gets internal file path successfully', async () => {
       // Arrange
+      const diskRepoMock = makeDiskRepoMock();
       const orid = v1.parse('orid:1:test-provider:::1001:fs:test-resource');
       diskRepoMock.getInternalFilePath.mockReturnValueOnce({
         path: '1001/fs',
@@ -252,6 +311,9 @@ describe('Logic', () => {
       });
 
       // Act
+      const logic = new Logic({
+        diskRepo: diskRepoMock as unknown as DiskRepo,
+      });
       const { path, filename } = logic.getInternalFilePath(orid);
 
       // Assert
@@ -264,6 +326,7 @@ describe('Logic', () => {
   describe('getContainers', () => {
     it('gets containers successfully', async () => {
       // Arrange
+      const diskRepoMock = makeDiskRepoMock();
       const accountId = '1001';
       diskRepoMock.getContainers.mockResolvedValueOnce([
         {
@@ -273,6 +336,9 @@ describe('Logic', () => {
       ]);
 
       // Act
+      const logic = new Logic({
+        diskRepo: diskRepoMock as unknown as DiskRepo,
+      });
       const containers = await logic.getContainers(accountId);
 
       // Assert
@@ -289,6 +355,7 @@ describe('Logic', () => {
   describe('getContents', () => {
     it('gets contents successfully', async () => {
       // Arrange
+      const diskRepoMock = makeDiskRepoMock();
       const orid = v1.parse('orid:1:test-provider:::1001:fs:test-container');
       diskRepoMock.getContents.mockResolvedValueOnce({
         directories: [],
@@ -301,6 +368,9 @@ describe('Logic', () => {
       });
 
       // Act
+      const logic = new Logic({
+        diskRepo: diskRepoMock as unknown as DiskRepo,
+      });
       const containers = await logic.getContents(orid);
 
       // Assert

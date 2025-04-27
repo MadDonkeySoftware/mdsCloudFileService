@@ -15,7 +15,7 @@ export async function getFileUploadAndFormFields(
 
   const formFields = await request.parseMultipart();
 
-  const requestFiles = request[kFileSavedPaths];
+  const requestFiles = request[kFileSavedPaths] || [];
 
   for (const field of fields) {
     const fieldValue = formFields[field.key];
@@ -31,7 +31,13 @@ export async function getFileUploadAndFormFields(
     fieldValues,
     cleanupCallback: async () => {
       const tasks = requestFiles.map((file) => rm(file));
-      await Promise.all(tasks);
+      const settled = await Promise.allSettled(tasks);
+      // Log any errors that occurred during cleanup
+      settled.forEach((result) => {
+        if (result.status === 'rejected') {
+          request.log.error({ err: result.reason }, 'Failed to delete file');
+        }
+      });
     },
   };
 }
