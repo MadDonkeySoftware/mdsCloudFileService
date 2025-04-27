@@ -8,6 +8,10 @@
       "matchDatasources": ["npm"],
       "automerge": true,
       "automergeType": "pr"
+    },
+    {
+      "matchPackageNames": ["eslint"],
+      "allowedVersions": "^8.0.0"
     }
   ],
   "lockFileMaintenance": {
