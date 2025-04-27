@@ -21,6 +21,7 @@ void (async () => {
 
     app.log.info(`Server listening at ${address}`);
   } catch (err) {
+    app.log.error(err, 'Failed to start server');
     console.error(err);
     process.exit(1);
   }

@@ -17,7 +17,13 @@ export function getOridFromRequest(
   if (!oridString) {
     throw new Error(`Missing orid parameter.`);
   }
-  const orid = v1.parse(oridString);
-  orid.useSlashSeparator = true;
-  return orid;
+
+  try {
+    const orid = v1.parse(oridString);
+    orid.useSlashSeparator = true;
+    return orid;
+  } catch (err) {
+    request.log.error({ err, oridString }, 'Failed to parse orid');
+    throw new Error('Invalid ORID format encountered.');
+  }
 }

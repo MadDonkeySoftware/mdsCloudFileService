@@ -6,11 +6,10 @@ export function validateRequestOridParam(
   reply: FastifyReply,
   done: (err?: any) => void,
 ) {
-  const hasOridInRequest = !!(request.params as { orid: string | undefined })
-    .orid;
-  if (hasOridInRequest) {
+  const params = request.params as { orid?: string };
+  const orid = params.orid;
+  if (orid) {
     // NOTE: Orid should have a value at this point.
-    const orid = (request.params as { orid: string | undefined }).orid;
     const parsedOrid = v1.isValid(orid!) ? v1.parse(orid!) : undefined;
 
     if (!parsedOrid) {

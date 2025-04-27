@@ -5,9 +5,6 @@ import { Cache } from 'memory-cache';
 
 describe('healthCheckController test', () => {
   let app: FastifyInstance;
-  const logicMock = {
-    healthChecks: jest.fn(),
-  };
 
   function makeRequest(overrides: InjectOptions = {}) {
     return app.inject({
@@ -33,9 +30,6 @@ describe('healthCheckController test', () => {
         }),
         serverCache: asClass(Cache, {
           lifetime: Lifetime.SINGLETON,
-        }),
-        logic: asFunction(() => logicMock, {
-          lifetime: Lifetime.SCOPED,
         }),
       });
       return Promise.resolve();
