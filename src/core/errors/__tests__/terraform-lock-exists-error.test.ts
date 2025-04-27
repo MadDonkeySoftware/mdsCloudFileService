@@ -2,7 +2,7 @@ import { TerraformLockExistsError } from '../terraform-lock-exists-error';
 
 describe('TerraformLockExistsError', () => {
   [
-    [null, 'lock file already exists'],
+    [undefined, 'lock file already exists'],
     ['custom message', 'custom message'],
   ].forEach(([message, expectedMessage]) => {
     it(`should have the message "${expectedMessage}"`, () => {
