@@ -33,7 +33,7 @@
     "@maddonkeysoftware/orid-node": "^0.1.2",
     "@sinclair/typebox": "^0.34.33",
     "awilix": "^8.0.1",
-    "axios": "^1.4.0",
+    "axios": "^1.12.2",
     "bunyan": "^1.8.15",
     "config": "^3.3.9",
     "del": "6.1.1",
