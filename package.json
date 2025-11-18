@@ -25,7 +25,7 @@
   "homepage": "https://github.com/MadDonkeySoftware/mdsCloudFileService#readme",
   "dependencies": {
     "@fastify/awilix": "^3.1.0",
-    "@fastify/static": "^6.12.0",
+    "@fastify/static": "^8.0.0",
     "@fastify/swagger": "^8.8.0",
     "@fastify/swagger-ui": "^1.9.3",
     "@fastify/type-provider-typebox": "^5.1.0",
