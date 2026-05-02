@@ -42,7 +42,7 @@
     "jsonwebtoken": "^9.0.0",
     "mds-log-pump": "^0.0.6",
     "memory-cache": "^0.2.0",
-    "uuid": "^9.0.0"
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
     "@tsconfig/node22": "^22.0.1",
